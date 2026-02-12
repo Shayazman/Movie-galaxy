@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useMemo, type ReactNode } from "react";
 import { tmdb, IMG, Movie } from "@/lib/tmdb";
 import GlowIcon from "@/components/GlowIcon";
+import AISuggester from "@/components/AISuggester";
+import AdSlot from "@/components/AdSlot";
 
 type Res = { results: Movie[] };
 
@@ -18,15 +20,47 @@ function readLocal(key: string) {
   return localStorage.getItem(key);
 }
 
+function surprisePool(movies: Movie[]) {
+  return movies.filter(
+    (m) =>
+      m.release_date &&
+      new Date(m.release_date).getFullYear() >= 2020 &&
+      m.vote_average >= 6
+  );
+}
+
+function pickRandom(list: Movie[], lastId?: number) {
+  const safe = list.filter((m) => m.id !== lastId);
+  const pool = safe.length ? safe : list;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 /* =============== SMART BRAIN =============== */
 
+function readMovieList(key: string): Movie[] {
+  const raw = readLocal(key);
+  return raw ? JSON.parse(raw) : [];
+}
+
 function userDNA(): number[] {
-  const raw = readLocal("movie-galaxy-list");
-  const list: Movie[] = raw ? JSON.parse(raw) : [];
+  const list = readMovieList("movie-galaxy-list");
+  const clicks = readMovieList("movie-galaxy-clicks");
   const friendRaw = readLocal("friend-dna");
   const friend: number[] = friendRaw ? JSON.parse(friendRaw) : [];
-  const mine = list.flatMap((m) => safeGenres(m));
+  const mine = [...list, ...clicks].flatMap((m) => safeGenres(m));
   return Array.from(new Set([...mine, ...friend]));
+}
+
+function recordInteraction(movie: Movie) {
+  if (typeof window === "undefined") return;
+  const key = "movie-galaxy-clicks";
+  const list = readMovieList(key);
+
+  if (!list.find((m) => m.id === movie.id)) {
+    list.unshift(movie);
+    if (list.length > 60) list.length = 60;
+    localStorage.setItem(key, JSON.stringify(list));
+  }
 }
 
 function mood(m: Movie) {
@@ -40,6 +74,11 @@ function mood(m: Movie) {
   if (g.includes("28")) return "Adrenaline";
 
   return "Cinematic";
+}
+
+function matchScore(m: Movie, dna: number[]) {
+  const match = safeGenres(m).filter((g) => dna.includes(g)).length;
+  return Math.min(99, 60 + match * 8);
 }
 
 function matchRuntime(m: Movie, runtimeMode: "short" | "medium" | "epic") {
@@ -169,7 +208,7 @@ function backupList() {
 }
 
 function TrendBadge({ m }: { m: Movie }) {
-  if (m.vote_count > 2000) {
+  if ((m.vote_count ?? 0) > 2000) {
     return (
       <span className="icon-inline">
         <GlowIcon name="flame" size={12} className="glow-icon" />
@@ -698,325 +737,151 @@ function saveToList(movie: Movie) {
 
 /* =============== POSTER =============== */
 
-function Poster({
-  movie,
-  highlight,
-  intensity,
-  taglines,
-  onTagline,
-  onChain,
-}: {
-  movie: Movie;
-  highlight?: boolean;
-  intensity: number;
-  taglines: Record<number, string>;
-  onTagline?: (movie: Movie) => void;
-  onChain?: (movie: Movie) => void;
-}) {
+type PosterProps = { movie: Movie } & Record<string, unknown>;
+
+function Poster({ movie }: PosterProps) {
+  const [dna, setDna] = useState<number[]>([]);
   const [trailer, setTrailer] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
   const [hover, setHover] = useState(false);
-  const timer = useRef<NodeJS.Timeout | null>(null);
-  const [timeLabel, setTimeLabel] = useState("");
-
-  const autoplay = intensity >= 2 ? 1 : 0;
-  const muted = intensity === 3 ? 0 : 1;
-  const delay =
-    intensity === 1 ? 99999 :
-    intensity === 2 ? 900 :
-    0;
+  const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!hover) {
-      if (timer.current) clearTimeout(timer.current);
-      return;
-    }
+    setDna(userDNA());
+  }, []);
 
-    timer.current = setTimeout(() => {
-      tmdb<{ results: any[] }>(`/movie/${movie.id}/videos`).then((r) => {
-        const t = r.results.find(
-          (v: any) => v.site === "YouTube" && v.type === "Trailer"
-        );
-        if (t) setTrailer(t.key);
-      });
-    }, delay);
+  const loadTrailer = async () => {
+    const r = await tmdb<{ results: any[] }>(`/movie/${movie.id}/videos`);
+    const t = r.results.find(
+      (v: any) => v.site === "YouTube" && v.type === "Trailer"
+    );
+    if (t) setTrailer(t.key);
+  };
 
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [hover, movie.id, delay]);
+  const startHold = () => {
+    holdTimer.current = setTimeout(() => {
+      loadTrailer();
+      setPreview(true);
+    }, 700);
+  };
 
-  useEffect(() => {
-    setTimeLabel(timeMatch(movie.runtime));
-  }, [movie.runtime]);
+  const cancelHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    setPreview(false);
+  };
 
-  const aura =
-    intensity === 3
-      ? "0 0 50px rgba(255,0,90,.7)"
-      : intensity === 1
-      ? "0 0 30px rgba(0,255,180,.5)"
-      : "0 0 40px rgba(124,58,237,.5)";
+  const openDetails = () => {
+    recordInteraction(movie);
+    window.location.href = `/movie/${movie.id}`;
+  };
 
-  const showTrend = movie.vote_count > 2000 || movie.vote_average > 8;
+  const onTouchStart = () => startHold();
+  const onTouchEnd = () => cancelHold();
 
   return (
-    <div style={{ position: "relative" }}>
-      <div
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
-        style={{
-          position: "relative",
-          cursor: "pointer",
-          transition: "all .35s ease",
-          transform: hover ? "scale(1.06)" : "scale(1)",
-        }}
-        onClick={() => (window.location.href = `/movie/${movie.id}`)}
-      >
-        {hover && trailer ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${trailer}?autoplay=${autoplay}&mute=${muted}&controls=0&rel=0`}
-            allow="autoplay; encrypted-media"
-            style={{
-              width: "100%",
-              aspectRatio: "2/3",
-              borderRadius: 16,
-              border: "none",
-              boxShadow: aura,
-              pointerEvents: "none",
-            }}
-          />
-        ) : (
-          <img
-            src={
-              movie.poster_path
-                ? IMG + movie.poster_path
-                : "https://via.placeholder.com/300x450"
-            }
-            style={{
-              width: "100%",
-              borderRadius: 16,
-              boxShadow: aura,
-            }}
-          />
-        )}
-
-        <div
+    <div
+      style={{
+        position: "relative",
+        cursor: "pointer",
+        transition: "transform .3s",
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => {
+        setHover(false);
+        cancelHold();
+      }}
+      onMouseDown={startHold}
+      onMouseUp={cancelHold}
+      onClick={openDetails}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {preview && trailer ? (
+        <iframe
+          src={`https://www.youtube.com/embed/${trailer}?autoplay=1&mute=1&controls=0`}
           style={{
-            position: "absolute",
-            top: 8,
-            left: 8,
-            padding: "4px 8px",
-            borderRadius: 10,
-            background: "rgba(0,0,0,.6)",
-            backdropFilter: "blur(6px)",
-            fontSize: 11,
+            width: "100%",
+            aspectRatio: "2/3",
+            borderRadius: 16,
+            border: "none",
+            boxShadow: "0 0 40px rgba(124,58,237,.7)",
+            pointerEvents: hover ? "auto" : "none",
           }}
-        >
-          {mood(movie)}
-        </div>
-
-        {showTrend && (
-          <div
-            style={{
-              position: "absolute",
-              top: 34,
-              left: 8,
-              padding: "4px 8px",
-              borderRadius: 10,
-              background: "rgba(0,0,0,.6)",
-              fontSize: 11,
-            }}
-          >
-            <TrendBadge m={movie} />
-          </div>
-        )}
-
-        <div
+        />
+      ) : (
+        <img
+          src={
+            movie.poster_path
+              ? IMG + movie.poster_path
+              : "https://via.placeholder.com/300x450"
+          }
           style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            padding: "4px 8px",
-            borderRadius: 10,
-            background: "rgba(0,0,0,.6)",
-            fontSize: 11,
+            width: "100%",
+            borderRadius: 16,
           }}
-        >
-          {intensity === 1 && (
-            <span className="icon-inline">
-              <GlowIcon name="moon" size={12} className="glow-icon" />
-              Chill
-            </span>
-          )}
-          {intensity === 2 && (
-            <span className="icon-inline">
-              <GlowIcon name="spark" size={12} className="glow-icon" />
-              Balanced
-            </span>
-          )}
-          {intensity === 3 && (
-            <span className="icon-inline">
-              <GlowIcon name="bolt" size={12} className="glow-icon" />
-              Unhinged
-            </span>
-          )}
-        </div>
-
-        {hover && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 10,
-              left: 10,
-              right: 10,
-              display: "flex",
-              gap: 8,
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                saveTonight(movie);
-              }}
-              style={{
-                flex: 1,
-                padding: "6px",
-                borderRadius: 12,
-                background: "rgba(124,58,237,.8)",
-                border: "none",
-                color: "white",
-              }}
-            >
-              <span className="icon-inline">
-                <GlowIcon name="moon" size={14} className="glow-icon" />
-                Tonight
-              </span>
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                saveToList(movie);
-              }}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 12,
-                background: "rgba(255,0,90,.7)",
-                border: "none",
-                color: "white",
-              }}
-            >
-              <GlowIcon name="heart" size={18} className="glow-icon" />
-            </button>
-
-            {onTagline && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTagline(movie);
-                }}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 12,
-                  background: "rgba(0,200,255,.7)",
-                  border: "none",
-                  color: "white",
-                }}
-              >
-                <span className="icon-inline">
-                  <GlowIcon name="spark" size={14} className="glow-icon" />
-                  Tagline
-                </span>
-              </button>
-            )}
-
-            {onChain && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChain(movie);
-                }}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 12,
-                  background: "rgba(0,255,160,.7)",
-                  border: "none",
-                  color: "black",
-                }}
-              >
-                <span className="icon-inline">
-                  <GlowIcon name="spark" size={14} className="glow-icon" />
-                  Chain
-                </span>
-              </button>
-            )}
-
-            <span onClick={(e) => e.stopPropagation()}>
-              <WatchParty movie={movie} />
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div style={{ fontSize: 13, marginTop: 6 }}>
-        {movie.title || movie.name}
-      </div>
-
-      {taglines[movie.id] && (
-        <div
-          style={{
-            fontSize: 12,
-            color: "#c084fc",
-            marginTop: 4,
-            fontStyle: "italic",
-          }}
-        >
-          "{taglines[movie.id]}"
-        </div>
+          loading="lazy"
+          decoding="async"
+          alt={movie.title || movie.name || "Movie"}
+        />
       )}
 
-      <div style={{ color: "#facc15", fontSize: 12, position: "relative" }}>
-        <span
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 2,
+          background: "transparent",
+        }}
+        onClick={() => {
+          window.location.href = `/movie/${movie.id}`;
+        }}
+      />
+
+      {hover && (
+        <div
           style={{
             position: "absolute",
-            left: -6,
-            top: "50%",
-            transform: "translateY(-50%)",
-            opacity: 0.6,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: 10,
+            background: "linear-gradient(transparent,rgba(0,0,0,.9))",
+            zIndex: 3,
             pointerEvents: "none",
           }}
         >
-          <GlowIcon name="star" size={18} className="glow-icon" />
-        </span>
-        <span style={{ paddingLeft: 12 }}>
+          <div style={{ fontWeight: 800 }}>{movie.title || movie.name}</div>
+          <div style={{ fontSize: 12, opacity: 0.8 }}>
+            {movie.overview?.slice(0, 80)}...
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 6, fontSize: 13 }}>
+        {movie.title || movie.name}
+      </div>
+      <div style={{ color: "#facc15", fontSize: 12 }}>
+        <span className="icon-inline">
+          <GlowIcon name="star" size={12} className="glow-icon" />
           Rating {movie.vote_average.toFixed(1)}
         </span>
       </div>
-
+      <div style={{ color: "#4ade80", fontSize: 12 }}>
+        YOU'LL LOVE: {matchScore(movie, dna)}%
+      </div>
       <div
         style={{
           marginTop: 6,
-          height: 4,
-          width: "100%",
-          background: "rgba(255,255,255,.12)",
-          borderRadius: 999,
-          overflow: "hidden",
+          fontSize: 11,
+          color: "#cfcfcf",
+          background: "rgba(0,0,0,.45)",
+          borderRadius: 10,
+          padding: "4px 6px",
+          display: "inline-block",
         }}
       >
-        <div
-          style={{
-            width: Math.min(100, movie.vote_average * 10) + "%",
-            height: 4,
-            background: "#7c3aed",
-          }}
-        />
+        Hold to preview - Tap to open
       </div>
-
-      <div style={{ fontSize: 11, color: "#b8b3c7", marginTop: 6 }}>
-        {timeLabel}
-      </div>
-
-      <WhyYouLove movie={movie} />
-      <SharePoster movie={movie} />
     </div>
   );
 }
@@ -1032,6 +897,7 @@ function Chapter({
   query,
   intensity,
   runtimeMode,
+  moodFilter,
   taglines,
   onTagline,
   onChain,
@@ -1044,6 +910,7 @@ function Chapter({
   query: string;
   intensity: number;
   runtimeMode: "short" | "medium" | "epic";
+  moodFilter: string;
   taglines: Record<number, string>;
   onTagline: (movie: Movie) => void;
   onChain: (movie: Movie) => void;
@@ -1052,9 +919,28 @@ function Chapter({
 
   useEffect(() => {
     tmdb<Res>(query).then((r) => {
-      let data = r.results
-        .filter(modern)
-        .filter((m) => matchRuntime(m, runtimeMode));
+      let data = r.results.filter(modern);
+
+      if (moodFilter === "fun")
+        data = data.filter((m) => safeGenres(m).includes(35));
+
+      if (moodFilter === "dark")
+        data = data.filter(
+          (m) => safeGenres(m).includes(27) || safeGenres(m).includes(53)
+        );
+
+      if (moodFilter === "romance")
+        data = data.filter((m) => safeGenres(m).includes(10749));
+
+      if (moodFilter === "action")
+        data = data.filter((m) => safeGenres(m).includes(28));
+
+      if (moodFilter === "brain")
+        data = data.filter(
+          (m) => safeGenres(m).includes(9648) || safeGenres(m).includes(878)
+        );
+
+      data = data.filter((m) => matchRuntime(m, runtimeMode));
 
       const dna = userDNA();
       data = data.sort((a, b) => {
@@ -1065,7 +951,7 @@ function Chapter({
 
       setMovies(data.slice(0, 6));
     });
-  }, [query, runtimeMode]);
+  }, [query, runtimeMode, moodFilter]);
 
   return (
     <section
@@ -1111,6 +997,9 @@ export default function GalaxyPicksPage() {
   const [intensity] = useState(2);
   const [runtimeMode, setRuntimeMode] = useState<"short" | "medium" | "epic">("medium");
   const [partyCode, setPartyCode] = useState<string | null>(null);
+  const [surprise, setSurprise] = useState<Movie | null>(null);
+  const [aiMovies, setAiMovies] = useState<Movie[]>([]);
+  const [moodFilter, setMoodFilter] = useState<string>("all");
   const [g1, setG1] = useState<keyof typeof GENRES>("Action");
   const [g2, setG2] = useState<keyof typeof GENRES>("Romance");
   const [fusion, setFusion] = useState<Movie[]>([]);
@@ -1131,16 +1020,37 @@ export default function GalaxyPicksPage() {
     return () => window.removeEventListener("keydown", k);
   }, []);
 
-  /* SURPRISE ME FEATURE ADDED HERE */
+  useEffect(() => {
+    tmdb<Res>("/trending/movie/week").then((r) => {
+      setAiMovies(r.results.filter(modern).slice(0, 18));
+    });
+  }, []);
+
   const surpriseMe = async () => {
+    const dna = userDNA();
+
     const r = await tmdb<Res>(
-      "/discover/movie?primary_release_date.gte=2020-01-01&vote_average.gte=6.2"
+      "/discover/movie?sort_by=vote_average.desc&vote_count.gte=300"
     );
 
-    const good = r.results.filter(modern);
-    const pick = good[Math.floor(Math.random() * good.length)];
+    const savedRaw = readLocal("movie-galaxy-list");
+    const saved: Movie[] = savedRaw ? JSON.parse(savedRaw) : [];
 
-    window.location.href = `/movie/${pick.id}`;
+    let pool = r.results.filter(
+      (m) =>
+        modern(m) &&
+        new Date(m.release_date!).getFullYear() >= 2020 &&
+        !saved.find((s) => s.id === m.id)
+    );
+
+    pool = pool.sort((a, b) => {
+      const am = safeGenres(a).filter((g) => dna.includes(g)).length;
+      const bm = safeGenres(b).filter((g) => dna.includes(g)).length;
+
+      return bm - am || b.vote_average - a.vote_average;
+    });
+
+    setSurprise(pool[0] || null);
   };
 
   async function loadFusion() {
@@ -1325,7 +1235,7 @@ export default function GalaxyPicksPage() {
           </button>
         </div>
         <button
-          onClick={() => (window.location.href = "/surprise")}
+          onClick={surpriseMe}
           style={{
             marginTop: 12,
             padding: "10px 16px",
@@ -1340,6 +1250,49 @@ export default function GalaxyPicksPage() {
             Can't Choose? Surprise Me
           </span>
         </button>
+
+        {surprise && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 14,
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,.08)",
+              background: "rgba(0,0,0,.45)",
+              display: "flex",
+              gap: 14,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ width: 120, minWidth: 120 }}>
+              <Poster movie={surprise} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800 }}>{surprise.title || surprise.name}</div>
+              <div style={{ color: "#facc15", fontSize: 12, marginTop: 4 }}>
+                <span className="icon-inline">
+                  <GlowIcon name="star" size={12} className="glow-icon" />
+                  Rating {surprise.vote_average.toFixed(1)}
+                </span>
+              </div>
+              <button
+                onClick={() => (window.location.href = `/movie/${surprise.id}`)}
+                style={{
+                  marginTop: 8,
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,.16)",
+                  background: "rgba(255,255,255,.06)",
+                  color: "white",
+                  cursor: "pointer",
+                }}
+              >
+                Open Movie
+              </button>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
           <button
@@ -1412,6 +1365,8 @@ export default function GalaxyPicksPage() {
 
         <FriendMatch />
       </header>
+
+      <AISuggester movies={aiMovies} />
 
       <AutoTrailerRow />
       <DailyChallenge />
@@ -1536,12 +1491,35 @@ export default function GalaxyPicksPage() {
         </section>
       )}
 
+      <div style={{ marginBottom: 40, display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {["all", "fun", "dark", "romance", "action", "brain"].map((m) => (
+          <button
+            key={m}
+            onClick={() => setMoodFilter(m)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,.14)",
+              background:
+                moodFilter === m
+                  ? "linear-gradient(135deg,#7c3aed,#4c1d95)"
+                  : "rgba(255,255,255,.06)",
+              color: "white",
+              cursor: "pointer",
+            }}
+          >
+            {m.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
       <Chapter
         id="unknown"
         index={0}
         activeIndex={active}
         intensity={intensity}
         runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
         taglines={taglines}
         onTagline={generateTagline}
         onChain={loadChain}
@@ -1561,6 +1539,7 @@ export default function GalaxyPicksPage() {
         activeIndex={active}
         intensity={intensity}
         runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
         taglines={taglines}
         onTagline={generateTagline}
         onChain={loadChain}
@@ -1574,12 +1553,15 @@ export default function GalaxyPicksPage() {
         query="/discover/movie?with_genres=9648,878,53&sort_by=popularity.desc"
       />
 
+      <AdSlot placement="Galaxy Picks" />
+
       <Chapter
         id="emotional"
         index={2}
         activeIndex={active}
         intensity={intensity}
         runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
         taglines={taglines}
         onTagline={generateTagline}
         onChain={loadChain}
@@ -1599,6 +1581,7 @@ export default function GalaxyPicksPage() {
         activeIndex={active}
         intensity={intensity}
         runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
         taglines={taglines}
         onTagline={generateTagline}
         onChain={loadChain}
@@ -1618,6 +1601,7 @@ export default function GalaxyPicksPage() {
         activeIndex={active}
         intensity={intensity}
         runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
         taglines={taglines}
         onTagline={generateTagline}
         onChain={loadChain}

@@ -3,8 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { tmdb, IMG, Movie } from "@/lib/tmdb";
+import { tmdb, IMG, Movie, getProviders } from "@/lib/tmdb";
 import GlowIcon from "@/components/GlowIcon";
+import { addToContinue, addXP } from "@/lib/galaxy";
+import { addXP as addProfileXP } from "@/lib/profile";
+import ShareBar from "@/components/ShareBar";
+import WatchParty from "@/components/WatchParty";
+import AdSlot from "@/components/AdSlot";
+import SupportBox from "@/components/SupportBox";
+import ShareCard from "@/components/ShareCard";
+import FolderManager from "@/components/FolderManager";
+import GalaxyComments from "@/components/GalaxyComments";
+import { YoutubeGen } from "@/components/YoutubeGen";
+import RealAds from "@/components/RealAds";
+import Affiliates from "@/components/Affiliates";
 
 type Video = {
   key: string;
@@ -52,6 +64,19 @@ function pickTrailer(videos: Video[]) {
   if (teaser) return teaser.key;
 
   return null;
+}
+
+function labelVideo(v: Video) {
+  const t = v.type || "Video";
+  const n = v.name || "";
+  if (/official/i.test(n) && t === "Trailer") return "Official Trailer";
+  if (t === "Trailer") return "Trailer";
+  if (t === "Teaser") return "Teaser";
+  return `${t}: ${n}`.slice(0, 40);
+}
+
+function defaultTrailerKey(videos: Video[]) {
+  return pickTrailer(videos);
 }
 
 /* ===== Trailer Modal ===== */
@@ -122,7 +147,7 @@ function TrailerModal({
               borderRadius: 10,
             }}
           >
-            ✕
+            X
           </button>
         </div>
 
@@ -160,10 +185,14 @@ export default function MoviePage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
+  const [providers, setProviders] = useState<string[]>([]);
 
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const trailerKey = useMemo(() => pickTrailer(videos), [videos]);
+  const trailerKey = useMemo(() => {
+    return selectedKey || defaultTrailerKey(videos);
+  }, [selectedKey, videos]);
 
   useEffect(() => {
     if (!id) return;
@@ -180,6 +209,9 @@ export default function MoviePage() {
       .then(([d, c, v, s]) => {
         if (!alive) return;
         setDetails(d);
+        addToContinue(d);
+        addXP(25);
+        addProfileXP(25);
         setCredits(c);
         setVideos(v.results || []);
         setSimilar((s.results || []).slice(0, 12));
@@ -194,6 +226,22 @@ export default function MoviePage() {
       alive = false;
     };
   }, [id, router]);
+
+  useEffect(() => {
+    if (!id) return;
+    getProviders(Number(id)).then((r) => {
+      const tz = r.results?.TZ?.flatrate || [];
+      setProviders(tz.map((p: any) => p.provider_name));
+    });
+  }, [id]);
+
+  useEffect(() => {
+    if (!details || typeof window === "undefined") return;
+    const raw = localStorage.getItem("mg-history");
+    const h: Movie[] = raw ? JSON.parse(raw) : [];
+    const next = [details, ...h.filter((m) => m.id !== details.id)].slice(0, 8);
+    localStorage.setItem("mg-history", JSON.stringify(next));
+  }, [details]);
 
   if (loading) {
     return (
@@ -213,7 +261,7 @@ export default function MoviePage() {
 
   const title = details.title || details.name || "Movie";
   const year = yearOf(details);
-  const genres = (details.genres || []).map((g) => g.name).join(" • ");
+  const genres = (details.genres || []).map((g) => g.name).join("  -  ");
   const runtime = fmtRuntime(details.runtime);
 
   const director =
@@ -261,7 +309,7 @@ export default function MoviePage() {
             backdropFilter: "blur(8px)",
           }}
         >
-          ← Back
+          Back
         </button>
 
         <div
@@ -310,15 +358,15 @@ export default function MoviePage() {
             <div style={{ color: "#ddd", marginBottom: 12 }}>
               <span style={{ color: "#facc15" }} className="icon-inline">
                 <GlowIcon name="star" size={12} className="glow-icon" />
-                Rating {details.vote_average?.toFixed?.(1) ?? "—"}
+                Rating {details.vote_average?.toFixed?.(1) ?? "-"}
               </span>
-              {"  "}•{"  "}
-              {year || "—"}
-              {"  "}•{"  "}
-              {runtime || "—"}
+              {"  "} - {"  "}
+              {year || "-"}
+              {"  "} - {"  "}
+              {runtime || "-"}
               {genres ? (
                 <>
-                  {"  "}•{"  "}
+                  {"  "} - {"  "}
                   {genres}
                 </>
               ) : null}
@@ -326,13 +374,33 @@ export default function MoviePage() {
 
             {details.tagline ? (
               <div style={{ color: "#bbb", marginBottom: 10, fontStyle: "italic" }}>
-                “{details.tagline}”
+                "{details.tagline}"
               </div>
             ) : null}
+
+            {providers.length > 0 && (
+              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                {providers.map((p) => (
+                  <span
+                    key={p}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 10,
+                      background: "rgba(255,255,255,.1)",
+                      fontSize: 12,
+                    }}
+                  >
+                    📺 {p}
+                  </span>
+                ))}
+              </div>
+            )}
 
             <p style={{ color: "#ccc", maxWidth: 900, lineHeight: 1.6 }}>
               {details.overview || "No overview available."}
             </p>
+
+            <Affiliates movie={details} />
 
             <div style={{ marginTop: 18, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button
@@ -401,6 +469,36 @@ export default function MoviePage() {
               </button>
             </div>
 
+            {videos.length > 0 && (
+              <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ color: "#aaa", fontSize: 13, alignSelf: "center" }}>
+                  Trailer:
+                </div>
+
+                <select
+                  value={selectedKey || ""}
+                  onChange={(e) => setSelectedKey(e.target.value || null)}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    background: "rgba(0,0,0,.55)",
+                    border: "1px solid rgba(255,255,255,.14)",
+                    color: "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="">Best (Auto)</option>
+                  {videos
+                    .filter((v) => v.site === "YouTube")
+                    .map((v) => (
+                      <option key={v.key} value={v.key}>
+                        {labelVideo(v)}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+
             {director ? (
               <div style={{ marginTop: 14, color: "#aaa", fontSize: 13 }}>
                 Director: <span style={{ color: "#ddd" }}>{director}</span>
@@ -409,6 +507,15 @@ export default function MoviePage() {
           </div>
         </div>
       </section>
+
+      <ShareBar title={title} />
+      <WatchParty movie={details} />
+      <ShareCard movie={details} />
+      <FolderManager movie={details} />
+      <YoutubeGen movie={details} />
+      <GalaxyComments movie={details} />
+      <AdSlot placement="Movie Details" />
+      <SupportBox />
 
 {/* ================= CAST CAROUSEL ================= */}
 <section style={{ marginTop: 32 }}>
@@ -434,9 +541,9 @@ export default function MoviePage() {
         height: 34,
         cursor: "pointer",
       }}
-    >
-      ‹
-    </button>
+      >
+        {"<"}
+      </button>
 
     {/* RIGHT ARROW */}
     <button
@@ -457,9 +564,9 @@ export default function MoviePage() {
         height: 34,
         cursor: "pointer",
       }}
-    >
-      ›
-    </button>
+      >
+        {">"}
+      </button>
 
     {/* SCROLL CONTAINER */}
     <div
@@ -531,6 +638,8 @@ export default function MoviePage() {
 </section>
 
 
+      <RealAds />
+
       {/* SIMILAR */}
       {similar.length > 0 && (
         <section style={{ marginTop: 32 }}>
@@ -581,5 +690,6 @@ export default function MoviePage() {
     </main>
   );
 }
+
 
 

@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { tmdb, IMG, Movie } from "@/lib/tmdb";
 import GlowIcon from "@/components/GlowIcon";
+import GalaxyAssistant from "@/components/GalaxyAssistant";
+import GalaxyXPBar from "@/components/GalaxyXPBar";
+import ContinueWatchingRow from "@/components/ContinueWatchingRow";
+import ProfileWidget from "@/components/ProfileWidget";
+import AISuggester from "@/components/AISuggester";
+import VoiceSearch from "@/components/VoiceSearch";
+import AdSlot, { PremiumToggle } from "@/components/AdSlot";
+import ContinueRow from "@/components/ContinueRow";
+import RealAds from "@/components/RealAds";
+import Subscribe from "@/components/Subscribe";
+import { addToContinue, addXP } from "@/lib/galaxy";
+import { addXP as addProfileXP } from "@/lib/profile";
 
 type Res = { results: Movie[] };
 
@@ -27,61 +39,84 @@ function saveToList(movie: Movie) {
 }
 
 /* ================= POSTER (ADDED FEATURE) ================= */
-function Poster({
-  movie,
-  onPick,
-  highlight,
-}: {
-  movie: Movie;
-  onPick?: () => void;
-  highlight?: boolean;
-}) {
+function Poster({ movie }: { movie: Movie }) {
   const [trailer, setTrailer] = useState<string | null>(null);
-  const [hover, setHover] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (!hover) return;
+  const loadTrailer = async () => {
+    const r = await tmdb<{ results: any[] }>(`/movie/${movie.id}/videos`);
+    const t = r.results.find(
+      (v: any) => v.site === "YouTube" && v.type === "Trailer"
+    );
+    if (t) setTrailer(t.key);
+  };
 
-    tmdb<{ results: any[] }>(`/movie/${movie.id}/videos`).then((r) => {
-      const t = r.results?.find(
-        (v: any) => v.site === "YouTube" && v.type === "Trailer"
-      );
-      if (t) setTrailer(t.key);
-      else setTrailer("");
-    });
-  }, [hover, movie.id]);
+  const startHold = () => {
+    holdTimer.current = setTimeout(() => {
+      loadTrailer();
+      setPreview(true);
+    }, 700);
+  };
+
+  const cancelHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    setPreview(false);
+  };
+
+  const openDetails = () => {
+    addToContinue(movie);
+    addXP(15);
+    addProfileXP(15);
+    window.location.href = `/movie/${movie.id}`;
+  };
+
+  const onTouchStart = () => startHold();
+  const onTouchEnd = () => cancelHold();
 
   return (
     <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
         position: "relative",
-        cursor: highlight ? "pointer" : "default",
-        transition: "transform .35s ease",
-        transform: hover ? "scale(1.06)" : "scale(1)",
+        cursor: "pointer",
+        transition: "transform .3s",
       }}
-      onClick={onPick}
+      onMouseDown={startHold}
+      onMouseUp={cancelHold}
+      onMouseLeave={cancelHold}
+      onClick={openDetails}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
-      {hover && trailer ? (
+      {preview && trailer ? (
         <iframe
           src={`https://www.youtube.com/embed/${trailer}?autoplay=1&mute=1&controls=0`}
           style={{
             width: "100%",
             aspectRatio: "2/3",
-            borderRadius: 14,
+            borderRadius: 16,
             border: "none",
-
-            /* ✅ ONLY ADDED LINE */
+            boxShadow: "0 0 40px rgba(124,58,237,.7)",
             pointerEvents: "none",
           }}
         />
       ) : (
         <img
-          src={movie.poster_path ? IMG + movie.poster_path : "https://via.placeholder.com/300x450"}
-          style={{ width: "100%", borderRadius: 14 }}
+          src={
+            movie.poster_path
+              ? IMG + movie.poster_path
+              : "https://via.placeholder.com/300x450"
+          }
+          style={{
+            width: "100%",
+            borderRadius: 16,
+          }}
+          loading="lazy"
+          decoding="async"
+          alt={movie.title || movie.name || "Movie"}
         />
       )}
+
     </div>
   );
 }
@@ -118,10 +153,12 @@ function Row({
       >
         {movies.map((m) => (
           <div key={m.id}>
-            {/* ✅ poster now has hover trailer preview */}
-            <Poster movie={m} onPick={() => saveTonight(m)} highlight />
+            {/*  poster now has hover trailer preview */}
+            <Poster
+              movie={m}
+            />
 
-            {/* ✅ KEEP your name + rating exactly */}
+            {/*  KEEP your name + rating exactly */}
             <div style={{ color: "white", fontSize: 13, marginTop: 6 }}>
               {m.title || m.name}
             </div>
@@ -131,8 +168,11 @@ function Row({
                 Rating {m.vote_average.toFixed(1)}
               </span>
             </div>
+            <div style={{ marginTop: 4, fontSize: 11, color: "#cfcfcf" }}>
+              Hold to preview - Tap to open
+            </div>
 
-            {/* ✅ KEEP your button exactly */}
+            {/*  KEEP your button exactly */}
             <button
               onClick={() => saveTonight(m)}
               style={{
@@ -152,7 +192,7 @@ function Row({
               </span>
             </button>
 
-            {/* ✅ ADDED: LOVE BUTTON (My List) */}
+            {/*  ADDED: LOVE BUTTON (My List) */}
             <button
               onClick={() => saveToList(m)}
               style={{
@@ -253,35 +293,49 @@ function TopBar() {
         >
           <span className="icon-inline">
             <GlowIcon name="moon" size={14} className="glow-icon" />
-            Tonight’s Pick
+            Tonight's Pick
           </span>
         </button>
       )}
 
-      <input
-        placeholder="Search the galaxy..."
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && q.trim()) {
-            window.location.href = `/search?q=${encodeURIComponent(q)}`;
-          }
-        }}
-        style={{
-          flex: 1,
-          padding: "10px 16px",
-          borderRadius: 20,
-          border: "1px solid rgba(255,255,255,.2)",
-          background: "rgba(0,0,0,.6)",
-          color: "white",
-        }}
-      />
+      <div style={{ display: "flex", gap: 12, flex: 1 }}>
+        <input
+          placeholder="Search the galaxy..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && q.trim()) {
+              window.location.href = `/search?q=${encodeURIComponent(q)}`;
+            }
+          }}
+          style={{
+            flex: 1,
+            padding: "10px 16px",
+            borderRadius: 20,
+            border: "1px solid rgba(255,255,255,.2)",
+            background: "rgba(0,0,0,.6)",
+            color: "white",
+            height: 44,
+          }}
+        />
+        <VoiceSearch
+          value={q}
+          onChange={setQ}
+          onSubmit={() => {
+            if (q.trim()) {
+              window.location.href = `/search?q=${encodeURIComponent(q)}`;
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }
 
 /* ================= PAGE ================= */
 export default function HomePage() {
+  const [aiMovies, setAiMovies] = useState<Movie[]>([]);
+
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "o" && e.ctrlKey) {
@@ -293,6 +347,12 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", k);
   }, []);
 
+  useEffect(() => {
+    tmdb<Res>("/trending/movie/week").then((r) => {
+      setAiMovies(r.results.filter(from2015).slice(0, 18));
+    });
+  }, []);
+
   return (
     <main
       style={{
@@ -302,7 +362,25 @@ export default function HomePage() {
       }}
     >
       <TopBar />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          marginBottom: 12,
+        }}
+      >
+        <PremiumToggle />
+      </div>
+      <AdSlot placement="Home Top" />
+      <GalaxyXPBar />
+      <ProfileWidget />
+      <GalaxyAssistant />
+      <ContinueWatchingRow />
+      <AISuggester movies={aiMovies} />
       <Hero />
+      <Subscribe />
 
       {/* ===== GALAXY ORACLE PROMO ===== */}
       <section
@@ -329,7 +407,7 @@ export default function HomePage() {
             </span>
           </h2>
           <p style={{ color: "#bbb", marginTop: 4 }}>
-            Don’t scroll. Let destiny choose a 2020+ movie based on your taste.
+            Don't scroll. Let destiny choose a 2020+ movie based on your taste.
           </p>
         </div>
 
@@ -351,6 +429,8 @@ export default function HomePage() {
         </button>
       </section>
 
+      <ContinueRow />
+
       <Row
         title={
           <span className="icon-inline">
@@ -360,6 +440,7 @@ export default function HomePage() {
         }
         url="/trending/movie/week"
       />
+      <RealAds />
       <Row
         title={
           <span className="icon-inline">
@@ -378,6 +459,7 @@ export default function HomePage() {
         }
         url="/movie/top_rated"
       />
+      <AdSlot placement="Home Mid" />
       <Row
         title={
           <span className="icon-inline">
@@ -417,4 +499,5 @@ export default function HomePage() {
     </main>
   );
 }
+
 

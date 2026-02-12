@@ -7,6 +7,8 @@ import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import useClickSound from "@/components/useClickSound";
 import GlowIcon from "@/components/GlowIcon";
+import { getCinemaMode, setCinemaMode } from "@/lib/galaxy";
+import { defaultProfiles, getActiveProfile, setActiveProfile } from "@/lib/profiles";
 
 export default function RootLayout({
   children,
@@ -14,6 +16,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [cinema, setCinema] = useState(false);
   const click = useClickSound();
 
   /* ===== MAGNETIC EFFECT ===== */
@@ -64,8 +67,36 @@ export default function RootLayout({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    const on = getCinemaMode();
+    setCinema(on);
+    if (on) document.body.classList.add("cinema-mode");
+  }, []);
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const v = Number(localStorage.getItem("visits") || 0);
+      localStorage.setItem("visits", String(v + 1));
+    } catch {}
+  }, []);
+
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#7c3aed" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+        />
+      </head>
       <body suppressHydrationWarning>
         <div
           style={{
@@ -148,20 +179,46 @@ export default function RootLayout({
                 textShadow: "0 0 22px rgba(124,58,237,1)",
                 animation: "logoPulse 4s infinite",
               }}
-            >
-              <img
-                src="/icon.svg"
-                alt="Movie Galaxy"
-                style={{
-                  width: 56,
-                  height: 56,
-                  filter: "drop-shadow(0 0 16px rgba(124,58,237,1))",
-                }}
-              />
-              Movie Galaxy
-            </span>
+              >
+                <img
+                  src="/icon.svg"
+                  alt="Movie Galaxy"
+                  style={{
+                    width: 56,
+                    height: 56,
+                    filter: "drop-shadow(0 0 16px rgba(124,58,237,1))",
+                  }}
+                />
+                Movie Galaxy
+              </span>
 
-            {/* progress bar */}
+              <button
+                onClick={() => {
+                  const next = !cinema;
+                  setCinema(next);
+                  setCinemaMode(next);
+                  document.body.classList.toggle("cinema-mode", next);
+                }}
+                style={{
+                  marginLeft: "auto",
+                  padding: "8px 12px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,.12)",
+                  background: cinema ? "rgba(124,58,237,.22)" : "rgba(255,255,255,.06)",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: 800,
+                }}
+              >
+                <span className="icon-inline">
+                  <GlowIcon name="film" size={14} className="glow-icon" />
+                  Cinema {cinema ? "ON" : "OFF"}
+                </span>
+              </button>
+
+              <ProfileSwitcher />
+
+              {/* progress bar */}
             <div
               id="progress"
               style={{
@@ -213,6 +270,7 @@ export default function RootLayout({
               <Nav href="/my-list" label="My List" iconName="heart" close={() => setOpen(false)} />
               <Nav href="/tonight" label="Tonight" iconName="moon" close={() => setOpen(false)} />
               <Nav href="/categories" label="Categories" iconName="film" close={() => setOpen(false)} />
+              <Nav href="/blog" label="Blog" iconName="spark" close={() => setOpen(false)} />
               <Nav href="/search" label="Search" iconName="search" close={() => setOpen(false)} />
             </aside>
 
@@ -292,6 +350,52 @@ export default function RootLayout({
               100% { transform: translateZ(0) scale(1); }
             }
 
+            @keyframes pulse {
+              0% { box-shadow: 0 0 20px rgba(124,58,237,.5); }
+              50% { box-shadow: 0 0 50px rgba(124,58,237,1); }
+              100% { box-shadow: 0 0 20px rgba(124,58,237,.5); }
+            }
+
+            :root{
+              --glow: rgba(124,58,237,.55);
+              --glow2: rgba(255, 200, 0, .35);
+            }
+
+            .card-glow{
+              box-shadow: 0 0 25px rgba(124,58,237,.22);
+              border: 1px solid rgba(255,255,255,.08);
+            }
+
+            .floaty{
+              animation: floaty 4.5s ease-in-out infinite;
+            }
+            @keyframes floaty{
+              0%{ transform: translateY(0px); }
+              50%{ transform: translateY(-8px); }
+              100%{ transform: translateY(0px); }
+            }
+
+            .shine{
+              position: relative;
+              overflow: hidden;
+            }
+            .shine::after{
+              content:"";
+              position:absolute;
+              top:-40%;
+              left:-60%;
+              width:60%;
+              height:180%;
+              transform: rotate(20deg);
+              background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
+              animation: shine 5.5s ease-in-out infinite;
+            }
+            @keyframes shine{
+              0%{ left:-60%; opacity:.2; }
+              45%{ opacity:.3; }
+              100%{ left:140%; opacity:.15; }
+            }
+
             .galaxy-logo {
               animation: logoOrbit 4.5s ease-in-out infinite;
             }
@@ -364,6 +468,18 @@ export default function RootLayout({
               z-index: 1;
             }
 
+            body.cinema-mode {
+              background: #030308 !important;
+            }
+
+            body.cinema-mode img {
+              filter: saturate(1.08) contrast(1.06);
+            }
+
+            body.cinema-mode .content {
+              background: radial-gradient(circle at top, rgba(124,58,237,.12), transparent 60%);
+            }
+
             @media (max-width: 900px) {
               .page-crest {
                 right: 16px;
@@ -388,6 +504,43 @@ export default function RootLayout({
         </div>
       </body>
     </html>
+  );
+}
+
+function ProfileSwitcher() {
+  const [mounted, setMounted] = useState(false);
+  const [active, setActive] = useState(defaultProfiles[0]);
+
+  useEffect(() => {
+    setMounted(true);
+    setActive(getActiveProfile());
+  }, []);
+
+  if (!mounted) return null;
+
+  return (
+    <div style={{ display: "flex", gap: 8, marginLeft: 12, flexWrap: "wrap" }}>
+      {defaultProfiles.map((p) => (
+        <button
+          key={p.id}
+          onClick={() => {
+            setActiveProfile(p);
+            setActive(p);
+            window.location.reload();
+          }}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 14,
+            background: active.id === p.id ? p.color : "rgba(255,255,255,.08)",
+            border: "1px solid rgba(255,255,255,.1)",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          {p.avatar} {p.name}
+        </button>
+      ))}
+    </div>
   );
 }
 

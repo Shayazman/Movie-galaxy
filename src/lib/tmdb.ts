@@ -10,6 +10,8 @@ export type Movie = {
   backdrop_path: string | null;
   overview?: string;
   vote_average: number;
+  vote_count?: number;
+  runtime?: number;
   release_date?: string;
   first_air_date?: string;
   genre_ids?: number[];
@@ -39,4 +41,8 @@ export async function tmdb<T>(path: string): Promise<T> {
   }
 
   return res.json();
+}
+
+export async function getProviders(id: number) {
+  return tmdb<any>(`/movie/${id}/watch/providers`);
 }
