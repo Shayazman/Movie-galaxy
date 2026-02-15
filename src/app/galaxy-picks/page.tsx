@@ -4,7 +4,11 @@ import { useEffect, useRef, useState, useMemo, type ReactNode } from "react";
 import { tmdb, IMG, Movie } from "@/lib/tmdb";
 import GlowIcon from "@/components/GlowIcon";
 import AISuggester from "@/components/AISuggester";
-import AdSlot from "@/components/AdSlot";
+import GalaxyAssistant from "@/components/GalaxyAssistant";
+import GalaxyXPBar from "@/components/GalaxyXPBar";
+import ProfileWidget from "@/components/ProfileWidget";
+import Subscribe from "@/components/Subscribe";
+import AdSlot, { PremiumToggle } from "@/components/AdSlot";
 
 type Res = { results: Movie[] };
 
@@ -1250,6 +1254,27 @@ export default function GalaxyPicksPage() {
             Can't Choose? Surprise Me
           </span>
         </button>
+        <button
+          onClick={async () => {
+            const r = await fetch("/api/surprise");
+            const d = await r.json();
+            if (d.pick?.id) window.location.href = `/movie/${d.pick.id}`;
+          }}
+          style={{
+            marginTop: 14,
+            marginLeft: 10,
+            padding: "12px 18px",
+            borderRadius: 18,
+            border: "none",
+            cursor: "pointer",
+            color: "white",
+            fontWeight: 900,
+            background: "linear-gradient(135deg,#ff2bd6,#7c3aed,#06b6d4)",
+            boxShadow: "0 0 35px rgba(255,43,214,.22)",
+          }}
+        >
+          Surprise Me (2020+)
+        </button>
 
         {surprise && (
           <div
@@ -1365,6 +1390,84 @@ export default function GalaxyPicksPage() {
 
         <FriendMatch />
       </header>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          marginBottom: 12,
+        }}
+      >
+        <PremiumToggle />
+      </div>
+
+      <GalaxyXPBar />
+      <ProfileWidget />
+      <GalaxyAssistant />
+
+      {aiMovies[0] && (
+        <section
+          style={{
+            height: "70vh",
+            borderRadius: 26,
+            marginBottom: 70,
+            padding: 40,
+            display: "flex",
+            alignItems: "flex-end",
+            background: `linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.95)),
+              url(${IMG + aiMovies[0].backdrop_path}) center/cover`,
+          }}
+        >
+          <div style={{ maxWidth: 700 }}>
+            <h1 style={{ fontSize: 48, color: "white" }}>
+              {aiMovies[0].title || aiMovies[0].name}
+            </h1>
+            <p style={{ color: "#facc15", marginBottom: 6 }}>
+              <span className="icon-inline">
+                <GlowIcon name="star" size={12} className="glow-icon" />
+                Rating {aiMovies[0].vote_average?.toFixed?.(1) ?? "-"}
+              </span>
+            </p>
+            <p style={{ color: "#ddd", fontSize: 14 }}>{aiMovies[0].overview}</p>
+          </div>
+        </section>
+      )}
+
+      <section style={{ marginBottom: 70 }}>
+        <h2 style={{ color: "white", fontSize: 22, marginBottom: 16 }}>
+          <span className="icon-inline">
+            <GlowIcon name="spark" size={16} className="glow-icon" />
+            AI Picks For You
+          </span>
+        </h2>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))",
+            gap: 24,
+          }}
+        >
+          {aiMovies.slice(0, 8).map((m) => (
+            <div key={m.id}>
+              <Poster movie={m} />
+              <div style={{ color: "white", fontSize: 13, marginTop: 6 }}>
+                {m.title || m.name}
+              </div>
+              <div style={{ color: "#facc15", fontSize: 12 }}>
+                <span className="icon-inline">
+                  <GlowIcon name="star" size={12} className="glow-icon" />
+                  Rating {m.vote_average?.toFixed?.(1) ?? "-"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Subscribe />
 
       <AISuggester movies={aiMovies} />
 

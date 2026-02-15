@@ -28,6 +28,10 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
 
   if (req.method !== "GET" || !req.url.startsWith(self.location.origin)) return;
+  const url = new URL(req.url);
+
+  // Let Next.js manage framework/runtime assets directly.
+  if (url.pathname.startsWith("/_next/")) return;
 
   // Network-first for navigation to avoid stale HTML hydration mismatch
   if (req.mode === "navigate") {
@@ -45,6 +49,7 @@ self.addEventListener("fetch", (event) => {
         cached ||
         fetch(req)
           .then((res) => {
+            if (!res.ok) return res;
             const copy = res.clone();
             caches.open(CACHE).then((cache) => cache.put(req, copy));
             return res;

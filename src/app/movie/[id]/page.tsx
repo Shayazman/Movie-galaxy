@@ -186,6 +186,7 @@ export default function MoviePage() {
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [providers, setProviders] = useState<string[]>([]);
+  const [aiReview, setAiReview] = useState("");
 
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -209,6 +210,25 @@ export default function MoviePage() {
       .then(([d, c, v, s]) => {
         if (!alive) return;
         setDetails(d);
+        fetch("/api/ai/review", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: d.title || d.name,
+            overview: d.overview,
+            year: d.release_date?.slice(0, 4),
+            rating: d.vote_average,
+          }),
+        })
+          .then((r) => r.json())
+          .then((x) => {
+            if (!alive) return;
+            setAiReview(x.review || "");
+          })
+          .catch(() => {
+            if (!alive) return;
+            setAiReview("");
+          });
         addToContinue(d);
         addXP(25);
         addProfileXP(25);
@@ -507,6 +527,22 @@ export default function MoviePage() {
           </div>
         </div>
       </section>
+
+      {aiReview ? (
+        <section
+          style={{
+            marginTop: 26,
+            padding: 18,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,.08)",
+            background: "rgba(0,0,0,.35)",
+            boxShadow: "0 0 40px rgba(124,58,237,.12)",
+          }}
+        >
+          <h2 style={{ fontSize: 20, marginBottom: 8 }}>AI Review</h2>
+          <p style={{ color: "#ddd", lineHeight: 1.6, margin: 0 }}>{aiReview}</p>
+        </section>
+      ) : null}
 
       <ShareBar title={title} />
       <WatchParty movie={details} />

@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import useClickSound from "@/components/useClickSound";
 import GlowIcon from "@/components/GlowIcon";
+import LanguageSwitch from "@/components/LanguageSwitch";
 import { getCinemaMode, setCinemaMode } from "@/lib/galaxy";
 import { defaultProfiles, getActiveProfile, setActiveProfile } from "@/lib/profiles";
 
@@ -74,9 +75,27 @@ export default function RootLayout({
   }, []);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    if (!("serviceWorker" in navigator)) return;
+
+    // Dev mode + cache-first SW is a common source of stale bundles and hydration mismatch.
+    if (process.env.NODE_ENV !== "production") {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => reg.unregister());
+      });
+
+      if ("caches" in window) {
+        caches.keys().then((keys) => {
+          keys
+            .filter((k) => k.startsWith("movie-galaxy-"))
+            .forEach((k) => {
+              caches.delete(k);
+            });
+        });
+      }
+      return;
     }
+
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -216,6 +235,10 @@ export default function RootLayout({
                 </span>
               </button>
 
+              <div style={{ marginLeft: 12 }}>
+                <LanguageSwitch />
+              </div>
+
               <ProfileSwitcher />
 
               {/* progress bar */}
@@ -270,8 +293,12 @@ export default function RootLayout({
               <Nav href="/my-list" label="My List" iconName="heart" close={() => setOpen(false)} />
               <Nav href="/tonight" label="Tonight" iconName="moon" close={() => setOpen(false)} />
               <Nav href="/categories" label="Categories" iconName="film" close={() => setOpen(false)} />
+              <Nav href="/premium" label="Premium" iconName="star" close={() => setOpen(false)} />
               <Nav href="/blog" label="Blog" iconName="spark" close={() => setOpen(false)} />
               <Nav href="/search" label="Search" iconName="search" close={() => setOpen(false)} />
+              <Nav href="/owner/newsletter" label="Owner Newsletter" iconName="bolt" close={() => setOpen(false)} />
+              <Nav href="/owner/tiktok" label="Owner TikTok" iconName="play" close={() => setOpen(false)} />
+              <Nav href="/owner/youtube" label="Owner YouTube" iconName="play" close={() => setOpen(false)} />
             </aside>
 
             {/* overlay */}

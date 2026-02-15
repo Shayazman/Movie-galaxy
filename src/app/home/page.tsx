@@ -3,16 +3,11 @@
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { tmdb, IMG, Movie } from "@/lib/tmdb";
 import GlowIcon from "@/components/GlowIcon";
-import GalaxyAssistant from "@/components/GalaxyAssistant";
-import GalaxyXPBar from "@/components/GalaxyXPBar";
 import ContinueWatchingRow from "@/components/ContinueWatchingRow";
-import ProfileWidget from "@/components/ProfileWidget";
-import AISuggester from "@/components/AISuggester";
 import VoiceSearch from "@/components/VoiceSearch";
-import AdSlot, { PremiumToggle } from "@/components/AdSlot";
+import AdSlot from "@/components/AdSlot";
 import ContinueRow from "@/components/ContinueRow";
 import RealAds from "@/components/RealAds";
-import Subscribe from "@/components/Subscribe";
 import { addToContinue, addXP } from "@/lib/galaxy";
 import { addXP as addProfileXP } from "@/lib/profile";
 
@@ -218,46 +213,6 @@ function Row({
   );
 }
 
-/* ================= HERO ================= */
-function Hero() {
-  const [movie, setMovie] = useState<Movie | null>(null);
-
-  useEffect(() => {
-    tmdb<Res>("/trending/movie/week").then((r) => {
-      const valid = r.results.filter(from2015);
-      setMovie(valid[0]);
-    });
-  }, []);
-
-  if (!movie) return null;
-
-  return (
-    <section
-      style={{
-        height: "70vh",
-        borderRadius: 26,
-        marginBottom: 70,
-        padding: 40,
-        display: "flex",
-        alignItems: "flex-end",
-        background: `linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.95)),
-          url(${IMG + movie.backdrop_path}) center/cover`,
-      }}
-    >
-      <div style={{ maxWidth: 700 }}>
-        <h1 style={{ fontSize: 48, color: "white" }}>{movie.title}</h1>
-        <p style={{ color: "#facc15", marginBottom: 6 }}>
-          <span className="icon-inline">
-            <GlowIcon name="star" size={12} className="glow-icon" />
-            Rating {movie.vote_average.toFixed(1)}
-          </span>
-        </p>
-        <p style={{ color: "#ddd", fontSize: 14 }}>{movie.overview}</p>
-      </div>
-    </section>
-  );
-}
-
 /* ================= TOP BAR ================= */
 function TopBar() {
   const [pick, setPick] = useState<Movie | null>(null);
@@ -334,8 +289,6 @@ function TopBar() {
 
 /* ================= PAGE ================= */
 export default function HomePage() {
-  const [aiMovies, setAiMovies] = useState<Movie[]>([]);
-
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "o" && e.ctrlKey) {
@@ -347,12 +300,6 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", k);
   }, []);
 
-  useEffect(() => {
-    tmdb<Res>("/trending/movie/week").then((r) => {
-      setAiMovies(r.results.filter(from2015).slice(0, 18));
-    });
-  }, []);
-
   return (
     <main
       style={{
@@ -362,25 +309,8 @@ export default function HomePage() {
       }}
     >
       <TopBar />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-          marginBottom: 12,
-        }}
-      >
-        <PremiumToggle />
-      </div>
       <AdSlot placement="Home Top" />
-      <GalaxyXPBar />
-      <ProfileWidget />
-      <GalaxyAssistant />
       <ContinueWatchingRow />
-      <AISuggester movies={aiMovies} />
-      <Hero />
-      <Subscribe />
 
       {/* ===== GALAXY ORACLE PROMO ===== */}
       <section
@@ -450,6 +380,7 @@ export default function HomePage() {
         }
         url="/movie/popular"
       />
+      <AdSlot />
       <Row
         title={
           <span className="icon-inline">

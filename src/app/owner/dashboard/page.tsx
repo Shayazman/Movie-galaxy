@@ -27,6 +27,8 @@ export default function Dashboard() {
       <nav style={{ marginBottom: 20 }}>
         <Link href="/owner/analytics">Analytics</Link> |{" "}
         <Link href="/owner/editor">Editor</Link> |{" "}
+        <Link href="/owner/newsletter">Newsletter</Link> |{" "}
+        <Link href="/owner/tiktok">TikTok</Link> |{" "}
         <Link href="/owner/youtube">YouTube</Link>
       </nav>
 
