@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { ReactNode, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import Footer from "@/components/Footer";
-import PageTransition from "@/components/PageTransition";
 import useClickSound from "@/components/useClickSound";
 import GlowIcon from "@/components/GlowIcon";
 import LanguageSwitch from "@/components/LanguageSwitch";
+import ToastHost from "@/components/Toast";
 import { getCinemaMode, setCinemaMode } from "@/lib/galaxy";
 import { defaultProfiles, getActiveProfile, setActiveProfile } from "@/lib/profiles";
 
@@ -18,38 +19,8 @@ export default function RootLayout({
 }) {
   const [open, setOpen] = useState(false);
   const [cinema, setCinema] = useState(false);
+  const pathname = usePathname();
   const click = useClickSound();
-
-  /* ===== MAGNETIC EFFECT ===== */
-  useEffect(() => {
-    const items = document.querySelectorAll(".galaxy-nav");
-
-    const move = (e: MouseEvent) => {
-      items.forEach((el) => {
-        const rect = (el as HTMLElement).getBoundingClientRect();
-
-        const x = e.clientX - rect.left - rect.width / 2;
-        const y = e.clientY - rect.top - rect.height / 2;
-
-        (el as HTMLElement).style.transform =
-          `translate(${x * 0.09}px, ${y * 0.09}px)`;   // smooth intensity
-      });
-    };
-
-    const reset = () => {
-      items.forEach((el) => {
-        (el as HTMLElement).style.transform = "translate(0,0)";
-      });
-    };
-
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseleave", reset);
-
-    return () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseleave", reset);
-    };
-  }, []);
 
   /* ===== SCROLL PROGRESS ===== */
   useEffect(() => {
@@ -108,6 +79,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#7c3aed" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -153,10 +125,13 @@ export default function RootLayout({
           </svg>
           {/* ===== HEADER ===== */}
           <header
+            className="app-header"
             style={{
-              height: 64,
+              minHeight: 64,
               display: "flex",
               alignItems: "center",
+              flexWrap: "wrap",
+              rowGap: 8,
               padding: "0 18px",
               background: "rgba(5,5,10,.92)",
               borderBottom: "1px solid rgba(255,255,255,.08)",
@@ -166,51 +141,99 @@ export default function RootLayout({
               backdropFilter: "blur(10px)",
             }}
           >
-            <button
-              onClick={() => {
-                click();
-                setOpen(true);
-              }}
-              aria-label="Open menu"
-              style={{
-                fontSize: 26,
-                background: "none",
-                border: "none",
-                color: "white",
-                cursor: "pointer",
-                marginRight: 12,
-                padding: 8,
-                borderRadius: 12,
-                backgroundColor: "rgba(124,58,237,.18)",
-                boxShadow: "0 0 18px rgba(124,58,237,.35)",
-              }}
-            >
-              <GlowIcon name="menu" size={28} strokeWidth={2.6} className="glow-icon menu-icon" />
-            </button>
-
-                        <span
+            <div
+              className="brand-wrap"
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                fontSize: 32,
-                fontWeight: 800,
-                textShadow: "0 0 22px rgba(124,58,237,1)",
-                animation: "logoPulse 4s infinite",
+                gap: 12,
+                minWidth: 0,
               }}
+            >
+              <div
+                className="brand-orb"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  display: "grid",
+                  placeItems: "center",
+                  border: "1px solid rgba(167,139,250,.45)",
+                  background:
+                    "linear-gradient(135deg, rgba(6,182,212,.22), rgba(124,58,237,.42))",
+                  boxShadow: "0 0 24px rgba(124,58,237,.35)",
+                  flexShrink: 0,
+                }}
               >
                 <img
                   src="/icon.svg"
                   alt="Movie Galaxy"
                   style={{
-                    width: 56,
-                    height: 56,
-                    filter: "drop-shadow(0 0 16px rgba(124,58,237,1))",
+                    width: 30,
+                    height: 30,
+                    filter: "drop-shadow(0 0 12px rgba(124,58,237,.75))",
                   }}
                 />
+              </div>
+              <span
+                className="brand-title"
+                style={{
+                  fontSize: "clamp(24px, 3.1vw, 34px)",
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  letterSpacing: ".02em",
+                  textShadow: "0 0 18px rgba(124,58,237,.75)",
+                  animation: "logoPulse 4s infinite",
+                  whiteSpace: "nowrap",
+                  background:
+                    "linear-gradient(120deg, #ffffff 0%, #e9d5ff 52%, #c4b5fd 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
                 Movie Galaxy
               </span>
+            </div>
 
+            <div
+              style={{
+                marginLeft: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                className="menu-badge"
+                onClick={() => {
+                  click();
+                  setOpen(true);
+                }}
+                aria-label="Open menu"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 12px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(167,139,250,.55)",
+                  background:
+                    "linear-gradient(135deg, rgba(255,43,214,.28), rgba(124,58,237,.55), rgba(6,182,212,.28))",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: 900,
+                  letterSpacing: ".08em",
+                  textTransform: "uppercase",
+                  boxShadow: "0 0 22px rgba(124,58,237,.45)",
+                  flexShrink: 0,
+                }}
+              >
+                <GlowIcon name="star" size={14} strokeWidth={2.6} className="glow-icon" />
+                <GlowIcon name="menu" size={16} strokeWidth={2.8} className="glow-icon menu-icon" />
+                Menu
+              </button>
               <button
                 onClick={() => {
                   const next = !cinema;
@@ -219,7 +242,6 @@ export default function RootLayout({
                   document.body.classList.toggle("cinema-mode", next);
                 }}
                 style={{
-                  marginLeft: "auto",
                   padding: "8px 12px",
                   borderRadius: 14,
                   border: "1px solid rgba(255,255,255,.12)",
@@ -240,6 +262,7 @@ export default function RootLayout({
               </div>
 
               <ProfileSwitcher />
+            </div>
 
               {/* progress bar */}
             <div
@@ -259,6 +282,7 @@ export default function RootLayout({
           <div style={{ display: "flex" }}>
             {/* ===== SIDEBAR ===== */}
             <aside
+              className="sidebar-scroll"
               style={{
                 width: 230,
                 background: "linear-gradient(180deg,#0b0b18,#05050a)",
@@ -270,6 +294,9 @@ export default function RootLayout({
                 height: "100vh",
                 transition: "left .35s ease",
                 zIndex: 100,
+                overflowY: "auto",
+                overflowX: "hidden",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               <button
@@ -289,11 +316,17 @@ export default function RootLayout({
               <Nav href="/" label="Welcome" iconName="spark" close={() => setOpen(false)} />
               <Nav href="/home" label="Home" iconName="star" close={() => setOpen(false)} />
               <Nav href="/surprise" label="Galaxy Oracle" iconName="shuffle" close={() => setOpen(false)} />
+              <Nav href="/binge-tonight" label="Binge Tonight" iconName="shuffle" close={() => setOpen(false)} />
+              <Nav href="/playlists" label="Playlists" iconName="play" close={() => setOpen(false)} />
               <Nav href="/galaxy-picks" label="Galaxy Picks" iconName="spark" close={() => setOpen(false)} />
               <Nav href="/my-list" label="My List" iconName="heart" close={() => setOpen(false)} />
               <Nav href="/tonight" label="Tonight" iconName="moon" close={() => setOpen(false)} />
+              <Nav href="/continue" label="Continue" iconName="play" close={() => setOpen(false)} />
               <Nav href="/categories" label="Categories" iconName="film" close={() => setOpen(false)} />
               <Nav href="/premium" label="Premium" iconName="star" close={() => setOpen(false)} />
+              <Nav href="/admin" label="Admin" iconName="bolt" close={() => setOpen(false)} />
+              <Nav href="/youtube" label="YouTube Tools" iconName="play" close={() => setOpen(false)} />
+              <Nav href="/watch/demo" label="Demo Player" iconName="play" close={() => setOpen(false)} />
               <Nav href="/blog" label="Blog" iconName="spark" close={() => setOpen(false)} />
               <Nav href="/search" label="Search" iconName="search" close={() => setOpen(false)} />
               <Nav href="/owner/newsletter" label="Owner Newsletter" iconName="bolt" close={() => setOpen(false)} />
@@ -320,6 +353,8 @@ export default function RootLayout({
               style={{
                 flex: 1,
                 marginLeft: 230,
+                width: "calc(100% - 230px)",
+                maxWidth: "calc(100vw - 230px)",
                 minHeight: "100vh",
                 display: "flex",
                 flexDirection: "column",
@@ -337,18 +372,65 @@ export default function RootLayout({
                   }}
                 />
               </div>
-              <PageTransition>{children}</PageTransition>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={pathname}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -30 }}
+                  transition={{ duration: 0.45, ease: "easeInOut" }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
 
               <Footer />
             </main>
           </div>
+          <ToastHost />
 
           {/* ===== GLOBAL STYLES ===== */}
           <style jsx global>{`
+            *,
+            *::before,
+            *::after {
+              box-sizing: border-box;
+            }
+
+            html,
+            body {
+              max-width: 100%;
+              overflow-x: hidden;
+            }
+
+            img,
+            video,
+            iframe,
+            canvas,
+            svg {
+              max-width: 100%;
+            }
+
             .galaxy-nav {
               transition: transform .18s ease,
                           box-shadow .2s ease,
                           background .2s ease;
+            }
+
+            .brand-orb {
+              animation: brandPulse 3.6s ease-in-out infinite;
+            }
+
+            @keyframes brandPulse {
+              0% {
+                box-shadow: 0 0 14px rgba(124,58,237,.28);
+              }
+              50% {
+                box-shadow: 0 0 30px rgba(124,58,237,.52), 0 0 16px rgba(6,182,212,.28);
+              }
+              100% {
+                box-shadow: 0 0 14px rgba(124,58,237,.28);
+              }
             }
 
             .galaxy-nav:hover {
@@ -480,6 +562,42 @@ export default function RootLayout({
                 drop-shadow(0 0 16px rgba(34,211,238,.45));
             }
 
+            .menu-badge {
+              animation: menuGlow 2.6s ease-in-out infinite;
+            }
+
+            @keyframes menuGlow {
+              0% {
+                box-shadow: 0 0 16px rgba(124,58,237,.35);
+              }
+              50% {
+                box-shadow: 0 0 30px rgba(255,43,214,.38), 0 0 42px rgba(124,58,237,.5);
+              }
+              100% {
+                box-shadow: 0 0 16px rgba(6,182,212,.35);
+              }
+            }
+
+            .sidebar-scroll {
+              scrollbar-width: thin;
+              scrollbar-color: rgba(167,139,250,.55) rgba(255,255,255,.08);
+            }
+
+            .sidebar-scroll::-webkit-scrollbar {
+              width: 10px;
+            }
+
+            .sidebar-scroll::-webkit-scrollbar-track {
+              background: rgba(255,255,255,.06);
+              border-radius: 999px;
+            }
+
+            .sidebar-scroll::-webkit-scrollbar-thumb {
+              border-radius: 999px;
+              background: linear-gradient(180deg, rgba(255,43,214,.75), rgba(124,58,237,.85));
+              border: 2px solid rgba(5,5,10,.65);
+            }
+
             .nav-bg {
               position: absolute;
               right: 12px;
@@ -524,7 +642,28 @@ export default function RootLayout({
 
             @media (max-width: 900px) {
               .content {
+                width: 100% !important;
+                max-width: 100% !important;
                 margin-left: 0 !important;
+              }
+
+              .app-header {
+                padding: 10px 12px !important;
+              }
+
+              main {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+              }
+
+              .menu-badge {
+                padding: 8px 10px !important;
+              }
+            }
+
+            @media (max-width: 1180px) {
+              .profile-switcher {
+                display: none !important;
               }
             }
           `}</style>
@@ -546,7 +685,7 @@ function ProfileSwitcher() {
   if (!mounted) return null;
 
   return (
-    <div style={{ display: "flex", gap: 8, marginLeft: 12, flexWrap: "wrap" }}>
+    <div className="profile-switcher" style={{ display: "flex", gap: 8, marginLeft: 12, flexWrap: "wrap" }}>
       {defaultProfiles.map((p) => (
         <button
           key={p.id}

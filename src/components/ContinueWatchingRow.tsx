@@ -37,7 +37,11 @@ export default function ContinueWatchingRow() {
         {items.slice(0, 12).map((m: any) => (
           <div
             key={m.id}
-            onClick={() => (window.location.href = `/movie/${m.id}`)}
+            onClick={() =>
+              (window.location.href = m?.first_air_date
+                ? `/tv/${m.id}`
+                : `/movie/${m.id}`)
+            }
             style={{
               minWidth: 140,
               cursor: "pointer",

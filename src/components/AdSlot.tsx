@@ -1,6 +1,9 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const PREMIUM_KEY = "mg-premium";
+const PREMIUM_EVENT = "mg-premium-change";
 
 function canUseStorage() {
   return typeof window !== "undefined";
@@ -8,18 +11,35 @@ function canUseStorage() {
 
 function isPremium() {
   if (!canUseStorage()) return false;
-  return localStorage.getItem("mg-premium") === "1";
+  return localStorage.getItem(PREMIUM_KEY) === "1";
+}
+
+function setPremium(next: boolean) {
+  if (!canUseStorage()) return;
+  localStorage.setItem(PREMIUM_KEY, next ? "1" : "0");
+  window.dispatchEvent(new Event(PREMIUM_EVENT));
 }
 
 export function PremiumToggle() {
-  const [p, setP] = useState(() => isPremium());
+  const [p, setP] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setP(isPremium());
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener(PREMIUM_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(PREMIUM_EVENT, sync);
+    };
+  }, []);
 
   return (
     <button
       onClick={() => {
         if (!canUseStorage()) return;
-        const next = !isPremium();
-        localStorage.setItem("mg-premium", next ? "1" : "0");
+        const next = !p;
+        setPremium(next);
         setP(next);
       }}
       style={{
@@ -40,7 +60,24 @@ export function PremiumToggle() {
 }
 
 export default function AdSlot({ placement }: { placement?: string }) {
-  if (isPremium()) return null;
+  const [ready, setReady] = useState(false);
+  const [premium, setPremiumState] = useState(false);
+
+  useEffect(() => {
+    const sync = () => {
+      setPremiumState(isPremium());
+      setReady(true);
+    };
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener(PREMIUM_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(PREMIUM_EVENT, sync);
+    };
+  }, []);
+
+  if (!ready || premium) return null;
 
   return (
     <div

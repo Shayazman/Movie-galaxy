@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Movie } from "@/lib/tmdb";
 import { addToFolder } from "@/lib/folders";
+import { toast } from "@/components/Toast";
 
 export default function FolderManager({ movie }: { movie: Movie }) {
   const [name, setName] = useState("");
@@ -10,7 +11,7 @@ export default function FolderManager({ movie }: { movie: Movie }) {
   const save = () => {
     if (!name.trim()) return;
     addToFolder(name, movie.id);
-    alert("Saved to " + name);
+    toast(`Saved to ${name}`);
     setName("");
   };
 

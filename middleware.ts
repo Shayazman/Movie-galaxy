@@ -4,11 +4,10 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isLoginPage = pathname === "/admin/login";
   const isLoginApi = pathname === "/api/admin/login";
 
-  // protect /admin and /api/admin
-  if (!isLoginPage && !isLoginApi && (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))) {
+  // protect /api/admin only (UI auth is handled client-side for /admin)
+  if (!isLoginApi && pathname.startsWith("/api/admin")) {
     const cookie = req.cookies.get("mg_admin")?.value;
     if (cookie !== "1") {
       const url = req.nextUrl.clone();
@@ -21,5 +20,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/api/admin/:path*"],
 };

@@ -32,7 +32,9 @@ export default function ContinueRow() {
             src={IMG + m.poster_path}
             style={{ width: "100%", borderRadius: 14, cursor: "pointer" }}
             onClick={() => {
-              window.location.href = `/movie/${m.id}`;
+              window.location.href = m.first_air_date
+                ? `/tv/${m.id}`
+                : `/movie/${m.id}`;
             }}
             alt={m.title || m.name || "Movie"}
             loading="lazy"

@@ -14,6 +14,7 @@ export default function AdminLogin() {
       body: JSON.stringify({ pw }),
     });
     if (!r.ok) return setErr("Wrong password.");
+    localStorage.setItem("mg_admin", "1");
     window.location.href = "/admin";
   }
 
@@ -61,4 +62,3 @@ export default function AdminLogin() {
     </main>
   );
 }
-

@@ -10,7 +10,7 @@ const MIN_YEAR = 2020;
 const MIN_RATING = 6.5;
 
 function yearOf(m: Movie) {
-  const d = (m as any).release_date as string | undefined;
+  const d = ((m as any).release_date || (m as any).first_air_date) as string | undefined;
   if (!d) return 0;
   const y = new Date(d).getFullYear();
   return Number.isFinite(y) ? y : 0;
@@ -80,7 +80,8 @@ type Mood =
   | "romance"
   | "scary"
   | "smart"
-  | "anime";
+  | "anime"
+  | "tv";
 
 type MoodIcon =
   | "shuffle"
@@ -92,6 +93,7 @@ type MoodIcon =
 
 const MOODS: { id: Mood; label: string; icon: MoodIcon; genres: number[] }[] = [
   { id: "any", label: "Anything", icon: "shuffle", genres: [] },
+  { id: "tv", label: "TV Shows", icon: "spark", genres: [] },
   { id: "action", label: "Action", icon: "bolt", genres: [28, 12] },
   { id: "funny", label: "Comedy", icon: "mask", genres: [35] },
   { id: "romance", label: "Romance", icon: "heart", genres: [10749, 18] },
@@ -229,6 +231,14 @@ export default function SurprisePage() {
 
     const year = Math.floor(Math.random() * 5) + 2020;
 
+    if (mood === "tv") {
+      const tvRes = await tmdb<Res>("/discover/tv?sort_by=popularity.desc");
+      const tvPool = (tvRes.results || []).filter((m) => (m as any).first_air_date);
+      setPick(tvPool[Math.floor(Math.random() * Math.max(1, tvPool.length))] || null);
+      setLoading(false);
+      return;
+    }
+
     const res = await tmdb<Res>(
       `/discover/movie?primary_release_date.gte=${year}-01-01${genreFilter}${vote}&sort_by=${sort}`
     );
@@ -237,7 +247,7 @@ export default function SurprisePage() {
       (m) => m.release_date && new Date(m.release_date).getFullYear() >= 2020
     );
 
-    setPick(modern[Math.floor(Math.random() * modern.length)]);
+    setPick(modern[Math.floor(Math.random() * modern.length)] || null);
     setLoading(false);
   }
 
@@ -628,7 +638,10 @@ export default function SurprisePage() {
             <button
               onClick={() => {
                 if (!pick) return;
-                window.location.href = `/movie/${(pick as any).id}`;
+                const isTV = !!(pick as any).first_air_date;
+                window.location.href = isTV
+                  ? `/tv/${(pick as any).id}`
+                  : `/movie/${(pick as any).id}`;
               }}
               style={btn("primary")}
             >

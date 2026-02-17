@@ -12,11 +12,31 @@ import AdSlot, { PremiumToggle } from "@/components/AdSlot";
 
 type Res = { results: Movie[] };
 
-const modern = (m: Movie) =>
-  m.release_date && new Date(m.release_date).getFullYear() >= 2016;
+const modern = (m: Movie) => {
+  const date = m.release_date || m.first_air_date;
+  return !!date && new Date(date).getFullYear() >= 2016;
+};
 
 function safeGenres(m: Movie): number[] {
   return Array.isArray(m.genre_ids) ? m.genre_ids : [];
+}
+
+function isBefore2012(m: Movie) {
+  const date = m.release_date || m.first_air_date;
+  if (!date) return false;
+  return new Date(date).getFullYear() < 2012;
+}
+
+function releaseYear(m: Movie): number {
+  const date = m.release_date || m.first_air_date;
+  if (!date) return 0;
+  const y = new Date(date).getFullYear();
+  return Number.isFinite(y) ? y : 0;
+}
+
+function withPage(path: string, page: number) {
+  const join = path.includes("?") ? "&" : "?";
+  return `${path}${join}page=${page}`;
 }
 
 function readLocal(key: string) {
@@ -86,7 +106,10 @@ function matchScore(m: Movie, dna: number[]) {
 }
 
 function matchRuntime(m: Movie, runtimeMode: "short" | "medium" | "epic") {
-  const rt = m.runtime || 110;
+  const rt = m.runtime;
+
+  // If runtime is missing, don't hide the title.
+  if (!rt) return true;
 
   if (runtimeMode === "short") return rt <= 95;
   if (runtimeMode === "medium") return rt > 95 && rt <= 130;
@@ -749,13 +772,15 @@ function Poster({ movie }: PosterProps) {
   const [preview, setPreview] = useState(false);
   const [hover, setHover] = useState(false);
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
+  const mediaType = movie.first_air_date ? "tv" : "movie";
+  const detailsHref = mediaType === "tv" ? `/tv/${movie.id}` : `/movie/${movie.id}`;
 
   useEffect(() => {
     setDna(userDNA());
   }, []);
 
   const loadTrailer = async () => {
-    const r = await tmdb<{ results: any[] }>(`/movie/${movie.id}/videos`);
+    const r = await tmdb<{ results: any[] }>(`/${mediaType}/${movie.id}/videos`);
     const t = r.results.find(
       (v: any) => v.site === "YouTube" && v.type === "Trailer"
     );
@@ -776,7 +801,7 @@ function Poster({ movie }: PosterProps) {
 
   const openDetails = () => {
     recordInteraction(movie);
-    window.location.href = `/movie/${movie.id}`;
+    window.location.href = detailsHref;
   };
 
   const onTouchStart = () => startHold();
@@ -837,7 +862,7 @@ function Poster({ movie }: PosterProps) {
           background: "transparent",
         }}
         onClick={() => {
-          window.location.href = `/movie/${movie.id}`;
+          window.location.href = detailsHref;
         }}
       />
 
@@ -922,8 +947,24 @@ function Chapter({
   const [movies, setMovies] = useState<Movie[]>([]);
 
   useEffect(() => {
-    tmdb<Res>(query).then((r) => {
-      let data = r.results.filter(modern);
+    let alive = true;
+
+    const load = async () => {
+      const pages = await Promise.all(
+        [1, 2, 3].map((page) => tmdb<Res>(withPage(query, page)))
+      );
+      if (!alive) return;
+
+      const seen = new Set<number>();
+      const minYear = query.includes("/tv") ? 2015 : 2020;
+      let data = pages
+        .flatMap((p) => p.results || [])
+        .filter((m) => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        })
+        .filter((m) => releaseYear(m) >= minYear);
 
       if (moodFilter === "fun")
         data = data.filter((m) => safeGenres(m).includes(35));
@@ -953,8 +994,16 @@ function Chapter({
         return bm - am;
       });
 
-      setMovies(data.slice(0, 6));
+      setMovies(data.slice(0, 36));
+    };
+
+    load().catch(() => {
+      if (alive) setMovies([]);
     });
+
+    return () => {
+      alive = false;
+    };
   }, [query, runtimeMode, moodFilter]);
 
   return (
@@ -970,17 +1019,25 @@ function Chapter({
       <h1 style={{ fontSize: 38 }}>{title}</h1>
       <p style={{ color: "#bbb", marginBottom: 40 }}>{subtitle}</p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 28 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          overflowX: "auto",
+          paddingBottom: 8,
+        }}
+      >
         {movies.map((m) => (
-          <Poster
-            key={m.id}
-            movie={m}
-            highlight={activeIndex === index}
-            intensity={intensity}
-            taglines={taglines}
-            onTagline={onTagline}
-            onChain={onChain}
-          />
+          <div key={m.id} style={{ minWidth: 145, width: 145 }}>
+            <Poster
+              movie={m}
+              highlight={activeIndex === index}
+              intensity={intensity}
+              taglines={taglines}
+              onTagline={onTagline}
+              onChain={onChain}
+            />
+          </div>
         ))}
       </div>
 
@@ -996,12 +1053,22 @@ function Chapter({
 /* =============== PAGE =============== */
 
 export default function GalaxyPicksPage() {
-  const sections = ["unknown", "mind", "emotional", "escape", "final"];
+  const sections = [
+    "unknown",
+    "mind",
+    "emotional",
+    "escape",
+    "final",
+    "action-core",
+    "romance-nights",
+    "horror-vault",
+    "tv-drama",
+    "tv-sci",
+  ];
   const [active, setActive] = useState(0);
   const [intensity] = useState(2);
   const [runtimeMode, setRuntimeMode] = useState<"short" | "medium" | "epic">("medium");
   const [partyCode, setPartyCode] = useState<string | null>(null);
-  const [surprise, setSurprise] = useState<Movie | null>(null);
   const [aiMovies, setAiMovies] = useState<Movie[]>([]);
   const [moodFilter, setMoodFilter] = useState<string>("all");
   const [g1, setG1] = useState<keyof typeof GENRES>("Action");
@@ -1030,32 +1097,84 @@ export default function GalaxyPicksPage() {
     });
   }, []);
 
-  const surpriseMe = async () => {
-    const dna = userDNA();
+  async function surpriseMe() {
+    try {
+      const dna = userDNA();
+      const saved = readMovieList("movie-galaxy-list");
+      const seenIds = new Set(saved.map((m) => m.id));
 
-    const r = await tmdb<Res>(
-      "/discover/movie?sort_by=vote_average.desc&vote_count.gte=300"
+      const [topA, topB, popA, popB] = await Promise.all([
+        tmdb<Res>(withPage("/discover/movie?sort_by=vote_average.desc&vote_count.gte=1200&primary_release_date.gte=2020-01-01", 1)),
+        tmdb<Res>(withPage("/discover/movie?sort_by=vote_average.desc&vote_count.gte=1200&primary_release_date.gte=2020-01-01", 2)),
+        tmdb<Res>(withPage("/discover/movie?sort_by=popularity.desc&vote_count.gte=300&primary_release_date.gte=2020-01-01", 1)),
+        tmdb<Res>(withPage("/discover/movie?sort_by=popularity.desc&vote_count.gte=300&primary_release_date.gte=2020-01-01", 2)),
+      ]);
+
+      const merged = [
+        ...(topA.results || []),
+        ...(topB.results || []),
+        ...(popA.results || []),
+        ...(popB.results || []),
+      ];
+
+      const unique = Array.from(
+        new Map(merged.map((m) => [m.id, m])).values()
+      );
+
+      const pool = unique.filter((m) => {
+        const year = releaseYear(m);
+        return (
+          year >= 2020 &&
+          (m.vote_average || 0) >= 6.6 &&
+          (m.vote_count || 0) >= 180 &&
+          !seenIds.has(m.id)
+        );
+      });
+
+      if (!pool.length) {
+        window.location.href = "/surprise";
+        return;
+      }
+
+      const ranked = pool
+        .map((m) => {
+          const matches = safeGenres(m).filter((g) => dna.includes(g)).length;
+          const votes = Math.log10((m.vote_count || 0) + 10);
+          const recency = Math.max(0, releaseYear(m) - 2020) * 0.18;
+          const score =
+            (m.vote_average || 0) * 2.2 +
+            votes +
+            matches * 1.4 +
+            recency;
+          return { movie: m, score };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      const elite = ranked.slice(0, Math.min(18, ranked.length));
+      const pick = elite[Math.floor(Math.random() * elite.length)]?.movie;
+
+      if (pick?.id) {
+        window.location.href = `/movie/${pick.id}`;
+        return;
+      }
+
+      window.location.href = "/surprise";
+    } catch {
+      window.location.href = "/surprise";
+    }
+  }
+
+  async function surpriseTV() {
+    const r = await tmdb<{ results: Movie[] }>(
+      "/discover/tv?sort_by=vote_average.desc&vote_count.gte=300&first_air_date.gte=2020-01-01"
     );
 
-    const savedRaw = readLocal("movie-galaxy-list");
-    const saved: Movie[] = savedRaw ? JSON.parse(savedRaw) : [];
+    const shows = r.results || [];
+    if (!shows.length) return;
 
-    let pool = r.results.filter(
-      (m) =>
-        modern(m) &&
-        new Date(m.release_date!).getFullYear() >= 2020 &&
-        !saved.find((s) => s.id === m.id)
-    );
-
-    pool = pool.sort((a, b) => {
-      const am = safeGenres(a).filter((g) => dna.includes(g)).length;
-      const bm = safeGenres(b).filter((g) => dna.includes(g)).length;
-
-      return bm - am || b.vote_average - a.vote_average;
-    });
-
-    setSurprise(pool[0] || null);
-  };
+    const random = shows[Math.floor(Math.random() * shows.length)];
+    window.location.href = `/tv/${random.id}`;
+  }
 
   async function loadFusion() {
     const url =
@@ -1148,7 +1267,7 @@ export default function GalaxyPicksPage() {
   }, []);
 
   return (
-    <main style={{ minHeight: "100vh", padding: "80px 40px", background: "#05050a", color: "white" }}>
+    <main style={{ minHeight: "100vh", padding: "80px 40px", background: "radial-gradient(circle at top, #14002a 0%, #05050a 70%)", color: "white" }}>
 
       <header style={{ marginBottom: 100 }}>
         <h1 style={{ fontSize: 52 }}>
@@ -1238,86 +1357,47 @@ export default function GalaxyPicksPage() {
             </span>
           </button>
         </div>
-        <button
-          onClick={surpriseMe}
-          style={{
-            marginTop: 12,
-            padding: "10px 16px",
-            borderRadius: 16,
-            background: "rgba(124,58,237,.2)",
-            border: "1px solid rgba(124,58,237,.3)",
-            color: "white",
-          }}
-        >
-          <span className="icon-inline">
-            <GlowIcon name="shuffle" size={14} className="glow-icon" />
-            Can't Choose? Surprise Me
-          </span>
-        </button>
-        <button
-          onClick={async () => {
-            const r = await fetch("/api/surprise");
-            const d = await r.json();
-            if (d.pick?.id) window.location.href = `/movie/${d.pick.id}`;
-          }}
-          style={{
-            marginTop: 14,
-            marginLeft: 10,
-            padding: "12px 18px",
-            borderRadius: 18,
-            border: "none",
-            cursor: "pointer",
-            color: "white",
-            fontWeight: 900,
-            background: "linear-gradient(135deg,#ff2bd6,#7c3aed,#06b6d4)",
-            boxShadow: "0 0 35px rgba(255,43,214,.22)",
-          }}
-        >
-          Surprise Me (2020+)
-        </button>
-
-        {surprise && (
-          <div
+        <div style={{ display: "flex", gap: 16, marginTop: 25, flexWrap: "wrap" }}>
+          <button
+            onClick={surpriseMe}
             style={{
-              marginTop: 16,
-              padding: 14,
-              borderRadius: 18,
-              border: "1px solid rgba(255,255,255,.08)",
-              background: "rgba(0,0,0,.45)",
-              display: "flex",
-              gap: 14,
-              alignItems: "center",
-              flexWrap: "wrap",
+              padding: "14px 28px",
+              borderRadius: 24,
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 900,
+              fontSize: 15,
+              color: "white",
+              background: "linear-gradient(135deg,#7c3aed,#4c1d95)",
+              boxShadow: "0 0 60px rgba(124,58,237,.8)",
+              transition: "all .3s ease",
             }}
           >
-            <div style={{ width: 120, minWidth: 120 }}>
-              <Poster movie={surprise} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 800 }}>{surprise.title || surprise.name}</div>
-              <div style={{ color: "#facc15", fontSize: 12, marginTop: 4 }}>
-                <span className="icon-inline">
-                  <GlowIcon name="star" size={12} className="glow-icon" />
-                  Rating {surprise.vote_average.toFixed(1)}
-                </span>
-              </div>
-              <button
-                onClick={() => (window.location.href = `/movie/${surprise.id}`)}
-                style={{
-                  marginTop: 8,
-                  padding: "8px 12px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,.16)",
-                  background: "rgba(255,255,255,.06)",
-                  color: "white",
-                  cursor: "pointer",
-                }}
-              >
-                Open Movie
-              </button>
-            </div>
-          </div>
-        )}
+            <span className="icon-inline">
+              <GlowIcon name="shuffle" size={14} className="glow-icon" />
+              Surprise Movie (Elite)
+            </span>
+          </button>
+
+          <button
+            onClick={surpriseTV}
+            style={{
+              padding: "14px 24px",
+              borderRadius: 24,
+              border: "1px solid rgba(255,255,255,.2)",
+              background: "rgba(255,255,255,.08)",
+              color: "white",
+              fontWeight: 700,
+              cursor: "pointer",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <span className="icon-inline">
+              <GlowIcon name="play" size={14} className="glow-icon" />
+              Surprise TV
+            </span>
+          </button>
+        </div>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
           <button
@@ -1633,7 +1713,7 @@ export default function GalaxyPicksPage() {
           </span>
         }
         subtitle="Secret crowd favorites"
-        query="/discover/movie?with_genres=28,53&sort_by=popularity.desc"
+        query="/discover/movie?with_genres=28,53&sort_by=popularity.desc&primary_release_date.gte=2020-01-01"
       />
 
       <Chapter
@@ -1653,7 +1733,7 @@ export default function GalaxyPicksPage() {
           </span>
         }
         subtitle="Movies that bend reality"
-        query="/discover/movie?with_genres=9648,878,53&sort_by=popularity.desc"
+        query="/discover/movie?with_genres=9648,878,53&sort_by=popularity.desc&primary_release_date.gte=2020-01-01"
       />
 
       <AdSlot placement="Galaxy Picks" />
@@ -1675,7 +1755,7 @@ export default function GalaxyPicksPage() {
           </span>
         }
         subtitle="Feel something real"
-        query="/discover/movie?with_genres=18,10749&sort_by=popularity.desc"
+        query="/discover/movie?with_genres=18,10749&sort_by=popularity.desc&primary_release_date.gte=2020-01-01"
       />
 
       <Chapter
@@ -1695,7 +1775,7 @@ export default function GalaxyPicksPage() {
           </span>
         }
         subtitle="No thoughts - just fun"
-        query="/discover/movie?with_genres=878,12&sort_by=popularity.desc"
+        query="/discover/movie?with_genres=878,12&sort_by=popularity.desc&primary_release_date.gte=2020-01-01"
       />
 
       <Chapter
@@ -1715,7 +1795,91 @@ export default function GalaxyPicksPage() {
           </span>
         }
         subtitle="Your destiny movie"
-        query="/movie/now_playing"
+        query="/discover/movie?sort_by=vote_average.desc&vote_count.gte=500&primary_release_date.gte=2020-01-01"
+      />
+
+      <Chapter
+        id="action-core"
+        index={5}
+        activeIndex={active}
+        intensity={intensity}
+        runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
+        taglines={taglines}
+        onTagline={generateTagline}
+        onChain={loadChain}
+        title="Action Core"
+        subtitle="Pure adrenaline and big spectacle"
+        query="/discover/movie?with_genres=28,12&sort_by=popularity.desc&primary_release_date.gte=2020-01-01"
+      />
+
+      <Chapter
+        id="romance-nights"
+        index={6}
+        activeIndex={active}
+        intensity={intensity}
+        runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
+        taglines={taglines}
+        onTagline={generateTagline}
+        onChain={loadChain}
+        title="Romance Nights"
+        subtitle="Warm, emotional, and unforgettable"
+        query="/discover/movie?with_genres=10749,18&sort_by=popularity.desc&primary_release_date.gte=2020-01-01"
+      />
+
+      <Chapter
+        id="horror-vault"
+        index={7}
+        activeIndex={active}
+        intensity={intensity}
+        runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
+        taglines={taglines}
+        onTagline={generateTagline}
+        onChain={loadChain}
+        title="Horror Vault"
+        subtitle="Dark picks for late-night sessions"
+        query="/discover/movie?with_genres=27,53&sort_by=popularity.desc&primary_release_date.gte=2020-01-01"
+      />
+
+      <h1 style={{
+        marginTop: 120,
+        fontSize: 44,
+        fontWeight: 900,
+        textShadow: "0 0 40px rgba(124,58,237,.7)"
+      }}>
+        TV Galaxy Picks
+      </h1>
+
+      <Chapter
+        id="tv-drama"
+        index={8}
+        activeIndex={active}
+        intensity={intensity}
+        runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
+        taglines={taglines}
+        onTagline={generateTagline}
+        onChain={loadChain}
+        title="TV Drama"
+        subtitle="Top modern drama series"
+        query="/discover/tv?with_genres=18&first_air_date.gte=2020-01-01"
+      />
+
+      <Chapter
+        id="tv-sci"
+        index={9}
+        activeIndex={active}
+        intensity={intensity}
+        runtimeMode={runtimeMode}
+        moodFilter={moodFilter}
+        taglines={taglines}
+        onTagline={generateTagline}
+        onChain={loadChain}
+        title="Sci-Fi Series"
+        subtitle="Mind expanding TV"
+        query="/discover/tv?with_genres=10765&first_air_date.gte=2020-01-01"
       />
 
     </main>
