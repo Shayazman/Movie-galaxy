@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { enablePremium, isPremium } from "@/lib/premium";
+import { isPremium, setPremium as setPremiumFlag } from "@/lib/premium";
 
 export default function MonetizationPage() {
   const [premium, setPremium] = useState(false);
@@ -30,7 +30,7 @@ export default function MonetizationPage() {
       {!premium ? (
         <button
           onClick={() => {
-            enablePremium();
+            setPremiumFlag(true);
             alert("Premium Activated (Demo Mode)");
             setPremium(true);
           }}
