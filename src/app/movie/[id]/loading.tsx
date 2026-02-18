@@ -1,49 +1,24 @@
 export default function LoadingMovie() {
   return (
-    <div className="row">
-      <div className="col-md-4 mb-3">
+    <main style={{ padding: 24, minHeight: "100vh", color: "white" }}>
+      <section style={{ borderRadius: 26, overflow: "hidden", background: "rgba(255,255,255,.06)", height: 420 }} />
+      <section style={{ marginTop: 24 }}>
         <div
-          className="placeholder-glow rounded"
-          style={{ height: "450px", background: "#2b2b3c" }}
-        >
-          <div className="placeholder w-100 h-100 rounded"></div>
+          style={{
+            height: 22,
+            width: 220,
+            borderRadius: 12,
+            background: "rgba(255,255,255,.06)",
+            marginBottom: 14,
+          }}
+        />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px,1fr))", gap: 18 }}>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} style={{ height: 260, borderRadius: 16, background: "rgba(255,255,255,.06)" }} />
+          ))}
         </div>
-      </div>
-
-      <div className="col-md-8">
-        <div className="placeholder-glow mb-2">
-          <span className="placeholder col-6"></span>
-        </div>
-
-        <div className="placeholder-glow mb-2">
-          <span className="placeholder col-3"></span>
-        </div>
-
-        <div className="placeholder-glow mb-3">
-          <span className="placeholder col-10"></span>
-          <span className="placeholder col-8"></span>
-          <span className="placeholder col-9"></span>
-        </div>
-
-        <div className="mt-4 p-3 rounded border border-secondary">
-          <div className="placeholder-glow mb-2">
-            <span className="placeholder col-4"></span>
-          </div>
-
-          <div className="d-flex gap-2 mb-2">
-            <span className="placeholder col-2"></span>
-            <span className="placeholder col-2"></span>
-            <span className="placeholder col-2"></span>
-          </div>
-
-          <span className="placeholder col-3"></span>
-        </div>
-
-        <div className="d-flex gap-2 mt-3">
-          <span className="placeholder col-2"></span>
-          <span className="placeholder col-2"></span>
-        </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
+

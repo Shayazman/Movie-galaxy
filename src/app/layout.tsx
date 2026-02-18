@@ -9,6 +9,9 @@ import useClickSound from "@/components/useClickSound";
 import GlowIcon from "@/components/GlowIcon";
 import LanguageSwitch from "@/components/LanguageSwitch";
 import ToastHost from "@/components/Toast";
+import ParticlesBackground from "@/components/ParticlesBackground";
+import CursorGlow from "@/components/CursorGlow";
+import ScrollProgress from "@/components/ScrollProgress";
 import { getCinemaMode, setCinemaMode } from "@/lib/galaxy";
 import { defaultProfiles, getActiveProfile, setActiveProfile } from "@/lib/profiles";
 
@@ -21,23 +24,6 @@ export default function RootLayout({
   const [cinema, setCinema] = useState(false);
   const pathname = usePathname();
   const click = useClickSound();
-
-  /* ===== SCROLL PROGRESS ===== */
-  useEffect(() => {
-    const bar = document.getElementById("progress");
-
-    const onScroll = () => {
-      const h =
-        document.documentElement.scrollHeight -
-        document.documentElement.clientHeight;
-
-      const p = (window.scrollY / h) * 100;
-      if (bar) bar.style.width = p + "%";
-    };
-
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     const on = getCinemaMode();
@@ -89,13 +75,18 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
+        <ScrollProgress />
+        <ParticlesBackground />
+        <CursorGlow />
         <div
           style={{
             minHeight: "100vh",
-            background: "#05050a",
+            background: "rgba(5,5,10,.92)",
             color: "white",
             margin: 0,
             animation: "pageFade .6s ease",
+            position: "relative",
+            zIndex: 2,
           }}
         >
           <svg
@@ -139,6 +130,7 @@ export default function RootLayout({
               top: 0,
               zIndex: 50,
               backdropFilter: "blur(10px)",
+              animation: "headerGlow 4s ease-in-out infinite",
             }}
           >
             <div
@@ -263,20 +255,6 @@ export default function RootLayout({
 
               <ProfileSwitcher />
             </div>
-
-              {/* progress bar */}
-            <div
-              id="progress"
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                height: 2,
-                width: "0%",
-                background:
-                  "linear-gradient(90deg,#7c3aed,#a78bfa,#7c3aed)",
-              }}
-            />
           </header>
 
           <div style={{ display: "flex" }}>
@@ -426,6 +404,27 @@ export default function RootLayout({
               transition: transform .18s ease,
                           box-shadow .2s ease,
                           background .2s ease;
+            }
+
+            .app-header {
+              box-shadow: 0 0 45px rgba(124,58,237,.15);
+            }
+
+            .app-header::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+              pointer-events: none;
+              background:
+                radial-gradient(circle at 20% 50%, rgba(124,58,237,.18), transparent 60%),
+                radial-gradient(circle at 80% 40%, rgba(255,255,255,.06), transparent 55%);
+              opacity: 0.9;
+            }
+
+            @keyframes headerGlow {
+              0% { filter: drop-shadow(0 0 0 rgba(124,58,237,0)); }
+              50% { filter: drop-shadow(0 0 18px rgba(124,58,237,.35)); }
+              100% { filter: drop-shadow(0 0 0 rgba(124,58,237,0)); }
             }
 
             .brand-orb {
