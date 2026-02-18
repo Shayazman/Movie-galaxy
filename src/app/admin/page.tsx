@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 function readJSON(key: string) {
   try {
@@ -12,64 +13,26 @@ function readJSON(key: string) {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [ok, setOk] = useState(false);
-  const [pin, setPin] = useState("");
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    const allowed =
+      localStorage.getItem("mg_admin") === "1" ||
+      localStorage.getItem("movie-galaxy-admin") === "1";
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOk(localStorage.getItem("movie-galaxy-admin") === "1");
-  }, []);
+    setOk(allowed);
+    setChecked(true);
 
-  if (!ok) {
-    return (
-      <main style={{ minHeight: "100vh", padding: 32, background: "#05050a", color: "white" }}>
-        <h1 style={{ fontSize: 44, fontWeight: 900 }}>Admin Login</h1>
-        <p style={{ color: "#bbb" }}>Enter your PIN.</p>
+    if (!allowed) {
+      router.replace("/admin/login");
+    }
+  }, [router]);
 
-        <div style={{ maxWidth: 340, marginTop: 14, display: "flex", gap: 10 }}>
-          <input
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN (set your own)"
-            type="password"
-            style={{
-              flex: 1,
-              padding: "10px 12px",
-              borderRadius: 14,
-              background: "rgba(0,0,0,.6)",
-              color: "white",
-              border: "1px solid rgba(255,255,255,.14)",
-            }}
-          />
-          <button
-            onClick={() => {
-              if (pin === "2026") {
-                localStorage.setItem("movie-galaxy-admin", "1");
-                setOk(true);
-              } else {
-                alert("Wrong PIN");
-              }
-            }}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 14,
-              border: "none",
-              cursor: "pointer",
-              color: "white",
-              fontWeight: 900,
-              background: "linear-gradient(135deg,#7c3aed,#4c1d95)",
-            }}
-          >
-            Login
-          </button>
-        </div>
-
-        <div style={{ marginTop: 10, color: "#aaa", fontSize: 13 }}>
-          Change the PIN inside this file. Later we can replace with real auth.
-        </div>
-      </main>
-    );
-  }
+  if (!checked) return null;
+  if (!ok) return null;
 
   const watchlist = readJSON("movie-galaxy-list");
   const tonight = (() => {
@@ -86,9 +49,13 @@ export default function AdminPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 style={{ fontSize: 46, fontWeight: 900 }}>Admin Dashboard</h1>
         <button
-          onClick={() => {
+          onClick={async () => {
+            localStorage.removeItem("mg_admin");
             localStorage.removeItem("movie-galaxy-admin");
-            window.location.href = "/home";
+            try {
+              await fetch("/api/admin/logout", { method: "POST" });
+            } catch {}
+            router.replace("/admin/login");
           }}
           style={{
             padding: "10px 14px",

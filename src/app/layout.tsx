@@ -324,7 +324,6 @@ export default function RootLayout({
               <Nav href="/continue" label="Continue" iconName="play" close={() => setOpen(false)} />
               <Nav href="/categories" label="Categories" iconName="film" close={() => setOpen(false)} />
               <Nav href="/premium" label="Premium" iconName="star" close={() => setOpen(false)} />
-              <Nav href="/admin" label="Admin" iconName="bolt" close={() => setOpen(false)} />
               <Nav href="/youtube" label="YouTube Tools" iconName="play" close={() => setOpen(false)} />
               <Nav href="/watch/demo" label="Demo Player" iconName="play" close={() => setOpen(false)} />
               <Nav href="/blog" label="Blog" iconName="spark" close={() => setOpen(false)} />
@@ -352,9 +351,10 @@ export default function RootLayout({
               className="content"
               style={{
                 flex: 1,
-                marginLeft: 230,
-                width: "calc(100% - 230px)",
-                maxWidth: "calc(100vw - 230px)",
+                marginLeft: 0,
+                width: "100%",
+                maxWidth: "100%",
+                minWidth: 0,
                 minHeight: "100vh",
                 display: "flex",
                 flexDirection: "column",
@@ -401,6 +401,13 @@ export default function RootLayout({
             body {
               max-width: 100%;
               overflow-x: hidden;
+              scrollbar-width: none;
+            }
+
+            html::-webkit-scrollbar,
+            body::-webkit-scrollbar {
+              width: 0;
+              height: 0;
             }
 
             img,
@@ -409,6 +416,10 @@ export default function RootLayout({
             canvas,
             svg {
               max-width: 100%;
+            }
+
+            .content {
+              overflow-x: clip;
             }
 
             .galaxy-nav {
@@ -579,23 +590,12 @@ export default function RootLayout({
             }
 
             .sidebar-scroll {
-              scrollbar-width: thin;
-              scrollbar-color: rgba(167,139,250,.55) rgba(255,255,255,.08);
+              scrollbar-width: none;
             }
 
             .sidebar-scroll::-webkit-scrollbar {
-              width: 10px;
-            }
-
-            .sidebar-scroll::-webkit-scrollbar-track {
-              background: rgba(255,255,255,.06);
-              border-radius: 999px;
-            }
-
-            .sidebar-scroll::-webkit-scrollbar-thumb {
-              border-radius: 999px;
-              background: linear-gradient(180deg, rgba(255,43,214,.75), rgba(124,58,237,.85));
-              border: 2px solid rgba(5,5,10,.65);
+              width: 0;
+              height: 0;
             }
 
             .nav-bg {

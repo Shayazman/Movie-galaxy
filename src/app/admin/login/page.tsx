@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminLogin() {
+  const router = useRouter();
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
+
+  useEffect(() => {
+    const ok =
+      localStorage.getItem("mg_admin") === "1" ||
+      localStorage.getItem("movie-galaxy-admin") === "1";
+    if (ok) {
+      router.replace("/admin");
+    }
+  }, [router]);
 
   async function login() {
     setErr("");
@@ -15,17 +26,34 @@ export default function AdminLogin() {
     });
     if (!r.ok) return setErr("Wrong password.");
     localStorage.setItem("mg_admin", "1");
-    window.location.href = "/admin";
+    router.replace("/admin");
   }
 
   return (
-    <main style={{ padding: 28, color: "white" }}>
-      <h1 style={{ fontSize: 30, fontWeight: 900 }}>Admin Login</h1>
-      <p style={{ color: "#bbb", marginTop: 6 }}>
-        Only you can enter.
-      </p>
+    <main
+      style={{
+        minHeight: "calc(100dvh - 110px)",
+        padding: "16px clamp(12px, 3vw, 24px)",
+        display: "grid",
+        placeItems: "center",
+        color: "white",
+      }}
+    >
+      <div
+        style={{
+          width: "min(440px, 100%)",
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,.1)",
+          background: "rgba(10,10,20,.62)",
+          backdropFilter: "blur(8px)",
+          padding: "20px",
+        }}
+      >
+        <h1 style={{ fontSize: "clamp(26px, 4vw, 32px)", fontWeight: 900, margin: 0 }}>
+          Admin Login
+        </h1>
+        <p style={{ color: "#bbb", marginTop: 8, marginBottom: 16 }}>Only you can enter.</p>
 
-      <div style={{ marginTop: 18, maxWidth: 420 }}>
         <input
           value={pw}
           onChange={(e) => setPw(e.target.value)}

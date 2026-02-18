@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || "ELVIS-GALAXY-2026").trim();
+
 export async function POST(req: Request) {
   const { pw } = await req.json();
+  const provided = typeof pw === "string" ? pw.trim() : "";
 
-  if (pw !== process.env.ADMIN_PASSWORD) {
+  if (provided !== ADMIN_PASSWORD) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
@@ -17,4 +20,3 @@ export async function POST(req: Request) {
   });
   return res;
 }
-

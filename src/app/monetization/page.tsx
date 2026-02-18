@@ -7,7 +7,10 @@ export default function MonetizationPage() {
   const [premium, setPremium] = useState(false);
 
   useEffect(() => {
-    setPremium(isPremium());
+    const t = window.setTimeout(() => {
+      setPremium(isPremium());
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   return (
