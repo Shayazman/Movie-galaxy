@@ -12,6 +12,7 @@ import ToastHost from "@/components/Toast";
 import ParticlesBackground from "@/components/ParticlesBackground";
 import CursorGlow from "@/components/CursorGlow";
 import ScrollProgress from "@/components/ScrollProgress";
+import BootSplash from "@/components/BootSplash";
 import { getCinemaMode, setCinemaMode } from "@/lib/galaxy";
 import { defaultProfiles, getActiveProfile, setActiveProfile } from "@/lib/profiles";
 
@@ -75,6 +76,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
+        <BootSplash />
         <ScrollProgress />
         <ParticlesBackground />
         <CursorGlow />
