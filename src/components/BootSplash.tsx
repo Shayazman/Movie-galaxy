@@ -27,22 +27,31 @@ export default function BootSplash() {
       <div style={{ textAlign: "center" }}>
         <div
           style={{
-            width: 100,
-            height: 100,
-            borderRadius: 30,
-            background: "linear-gradient(135deg,#7c3aed,#facc15)",
+            width: 110,
+            height: 110,
+            borderRadius: 32,
+            padding: 8,
+            background: "rgba(255,255,255,.06)",
             display: "grid",
             placeItems: "center",
-            fontSize: 40,
-            boxShadow: "0 0 50px rgba(124,58,237,.5)",
+            boxShadow: "0 0 50px rgba(124,58,237,.45)",
+            border: "1px solid rgba(255,255,255,.14)",
           }}
         >
-          🌌
+          <img
+            src="/icon.svg"
+            alt="Movie Galaxy"
+            style={{
+              width: 94,
+              height: 94,
+              borderRadius: 24,
+              filter: "drop-shadow(0 0 18px rgba(124,58,237,.7))",
+            }}
+          />
         </div>
 
-        <div style={{ marginTop: 14, color: "#ccc" }}>Movie Galaxy</div>
+        <div style={{ marginTop: 14, color: "#ccc", letterSpacing: ".02em" }}>Movie Galaxy</div>
       </div>
     </div>
   );
 }
-

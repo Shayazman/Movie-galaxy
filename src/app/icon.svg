@@ -1,116 +1,69 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Movie Galaxy icon">
   <defs>
-    <radialGradient id="spaceBg" cx="50%" cy="38%" r="80%">
-      <stop offset="0%" stop-color="#1b1335" />
-      <stop offset="55%" stop-color="#0b0b18" />
-      <stop offset="100%" stop-color="#05050a" />
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#22124a"/>
+      <stop offset="60%" stop-color="#0b0b18"/>
+      <stop offset="100%" stop-color="#05050a"/>
     </radialGradient>
-
-    <radialGradient id="centerGlow" cx="48%" cy="50%" r="52%">
-      <stop offset="0%" stop-color="#fff9ef" />
-      <stop offset="30%" stop-color="#ffd7a1" />
-      <stop offset="58%" stop-color="#c9b4ff" />
-      <stop offset="100%" stop-color="#47307a" />
+    <linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9f7bff"/>
+      <stop offset="45%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <radialGradient id="core" cx="45%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#d7caff"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
     </radialGradient>
-
-    <linearGradient id="armWarm" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f6c181" />
-      <stop offset="45%" stop-color="#d97e46" />
-      <stop offset="100%" stop-color="#b14b3d" />
-    </linearGradient>
-
-    <linearGradient id="armCool" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#d3c6ff" />
-      <stop offset="55%" stop-color="#94aaff" />
-      <stop offset="100%" stop-color="#7b5fd2" />
-    </linearGradient>
-
-    <filter id="galaxyGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="6.5" result="blur" />
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
       <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-
-    <clipPath id="roundRect">
-      <rect x="36" y="36" width="440" height="440" rx="96" ry="96" />
-    </clipPath>
   </defs>
 
-  <rect x="14" y="14" width="484" height="484" rx="110" ry="110" fill="url(#spaceBg)" />
+  <circle cx="256" cy="256" r="242" fill="url(#bg)"/>
 
-  <g clip-path="url(#roundRect)">
-    <g opacity="0.95">
-      <circle cx="64" cy="94" r="2.8" fill="#cfd8ff" />
-      <circle cx="106" cy="66" r="2.2" fill="#fbe4bf" />
-      <circle cx="148" cy="112" r="1.9" fill="#d7dfff" />
-      <circle cx="184" cy="78" r="1.7" fill="#fbd2a7" />
-      <circle cx="218" cy="108" r="2.6" fill="#f2f6ff" />
-      <circle cx="264" cy="74" r="2.2" fill="#cbd6ff" />
-      <circle cx="306" cy="98" r="2.3" fill="#ffe0bf" />
-      <circle cx="344" cy="68" r="1.8" fill="#d6ddff" />
-      <circle cx="386" cy="94" r="2.4" fill="#fff3df" />
-      <circle cx="428" cy="72" r="2.2" fill="#d3dfff" />
-      <circle cx="450" cy="116" r="1.8" fill="#ffcda8" />
-
-      <circle cx="78" cy="192" r="2.2" fill="#d7ddff" />
-      <circle cx="118" cy="158" r="1.6" fill="#ffe3c2" />
-      <circle cx="166" cy="198" r="2" fill="#ced7ff" />
-      <circle cx="208" cy="164" r="1.7" fill="#ffe7c8" />
-      <circle cx="252" cy="188" r="2.2" fill="#dbe2ff" />
-      <circle cx="296" cy="158" r="1.8" fill="#f7ddb9" />
-      <circle cx="338" cy="192" r="2.2" fill="#d5deff" />
-      <circle cx="384" cy="162" r="2.4" fill="#ffebcc" />
-      <circle cx="430" cy="194" r="2" fill="#ced7ff" />
-
-      <circle cx="68" cy="286" r="2.1" fill="#d8deff" />
-      <circle cx="112" cy="248" r="1.7" fill="#f6d9b5" />
-      <circle cx="156" cy="286" r="2.4" fill="#e8ecff" />
-      <circle cx="196" cy="248" r="2.1" fill="#ffd8ae" />
-      <circle cx="242" cy="286" r="2.5" fill="#d4dcff" />
-      <circle cx="286" cy="252" r="2.2" fill="#fbdab0" />
-      <circle cx="330" cy="286" r="2.2" fill="#dde4ff" />
-      <circle cx="374" cy="250" r="2.1" fill="#ffe2c1" />
-      <circle cx="420" cy="286" r="2.5" fill="#d8dfff" />
-      <circle cx="454" cy="252" r="1.8" fill="#f7d4ab" />
-
-      <circle cx="84" cy="382" r="2.2" fill="#d8ddff" />
-      <circle cx="130" cy="348" r="1.8" fill="#ffd8b0" />
-      <circle cx="174" cy="386" r="2.1" fill="#e7ebff" />
-      <circle cx="216" cy="350" r="1.9" fill="#ffe2c1" />
-      <circle cx="262" cy="386" r="2.3" fill="#d8dfff" />
-      <circle cx="304" cy="352" r="2.1" fill="#fcdcb6" />
-      <circle cx="350" cy="386" r="2.2" fill="#d5deff" />
-      <circle cx="396" cy="352" r="2.3" fill="#ffe4c5" />
-      <circle cx="438" cy="390" r="2.1" fill="#d7dfff" />
-    </g>
-
-    <g filter="url(#galaxyGlow)">
-      <ellipse cx="258" cy="258" rx="204" ry="120" fill="rgba(160,170,255,0.12)" />
-      <ellipse cx="258" cy="258" rx="178" ry="102" fill="rgba(246,178,130,0.1)" />
-
-      <path d="M94 310 C 154 182, 350 148, 432 232 C 338 178, 202 206, 160 320 C 136 388, 176 424, 236 438"
-        fill="none" stroke="url(#armCool)" stroke-width="24" stroke-linecap="round" />
-      <path d="M118 332 C 170 214, 338 188, 404 258 C 334 222, 236 248, 202 328 C 182 376, 204 404, 246 416"
-        fill="none" stroke="url(#armWarm)" stroke-width="16" stroke-linecap="round" opacity="0.95" />
-
-      <path d="M424 258 C 362 360, 200 372, 126 294 C 218 338, 322 324, 354 252 C 380 194, 340 156, 286 150"
-        fill="none" stroke="url(#armCool)" stroke-width="23" stroke-linecap="round" />
-      <path d="M398 244 C 342 332, 214 344, 152 290 C 228 326, 304 314, 332 254 C 352 212, 324 184, 288 180"
-        fill="none" stroke="url(#armWarm)" stroke-width="15" stroke-linecap="round" opacity="0.95" />
-
-      <circle cx="258" cy="258" r="76" fill="url(#centerGlow)" />
-      <circle cx="258" cy="258" r="36" fill="#fffef9" opacity="0.88" />
-    </g>
-
-    <g filter="url(#galaxyGlow)" fill="#f7fbff" opacity="0.95">
-      <path d="M96 130 l9 21 22 4 -16 15 4 22 -19 -11 -19 11 4 -22 -16 -15 22 -4z" />
-      <path d="M410 178 l8 18 19 3 -14 13 3 19 -16 -9 -16 9 3 -19 -14 -13 19 -3z" />
-      <path d="M390 352 l7 16 17 3 -12 12 3 17 -15 -8 -15 8 3 -17 -12 -12 17 -3z" />
-      <path d="M122 352 l6 14 15 2 -11 10 3 15 -13 -7 -13 7 3 -15 -11 -10 15 -2z" />
-    </g>
+  <g filter="url(#glow)">
+    <circle cx="256" cy="256" r="160" fill="none" stroke="url(#neon)" stroke-width="18"/>
+    <circle
+      cx="256"
+      cy="256"
+      r="170"
+      fill="none"
+      stroke="rgba(255,255,255,.35)"
+      stroke-width="6"
+      stroke-dasharray="6 18"
+      opacity="0.6"
+    />
+    <circle cx="256" cy="256" r="88" fill="url(#core)" opacity="0.98"/>
   </g>
 
-  <rect x="14" y="14" width="484" height="484" rx="110" ry="110" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2" />
+  <path
+    d="M96 330 C 170 210, 340 165, 426 250"
+    fill="none"
+    stroke="url(#neon)"
+    stroke-width="14"
+    stroke-linecap="round"
+    filter="url(#glow)"
+  />
+  <path
+    d="M128 350 C 190 250, 330 215, 400 275"
+    fill="none"
+    stroke="rgba(34,211,238,.6)"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+
+  <g filter="url(#glow)">
+    <circle cx="385" cy="170" r="12" fill="#facc15"/>
+    <circle cx="410" cy="140" r="6" fill="#22d3ee"/>
+    <circle cx="120" cy="215" r="7" fill="#a78bfa"/>
+    <path
+      d="M280 180 l10 24 26 4 -18 18 4 26 -22 -12 -22 12 4 -26 -18 -18 26 -4z"
+      fill="rgba(255,255,255,.9)"
+    />
+  </g>
 </svg>
