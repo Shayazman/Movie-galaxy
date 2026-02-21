@@ -5,11 +5,18 @@ import * as path from "path";
 
 export const runtime = "nodejs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const file = path.join(process.cwd(), "data", "subscribers.json");
 
 export async function POST(req: Request) {
   const { subject, content } = await req.json();
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Email service is not configured (RESEND_API_KEY missing)." },
+      { status: 503 },
+    );
+  }
 
   let list: string[] = [];
   try {
@@ -21,6 +28,8 @@ export async function POST(req: Request) {
   if (!list.length) {
     return NextResponse.json({ error: "No subscribers" }, { status: 400 });
   }
+
+  const resend = new Resend(apiKey);
 
   await resend.emails.send({
     from: "Movie Galaxy <onboarding@resend.dev>",
